@@ -13,7 +13,7 @@ and [col_processing](https://github.com/vlouf/cpol_processing).
 - Hail Differential Reflectivity - HDR ([Depue et al. 2007](https://doi.org/10.1175/JAM2529.1))
 - Maximum Expected Size of Hail - MESH ([Witt et al. 1998](https://journals.ametsoc.org/doi/10.1175/1520-0434%281998%29013%3C0286%3AAEHDAF%3E2.0.CO%3B2))
 
-## Dual Pol Corrections
+### Dual Pol Corrections
 - SNR calculation from radiosonde using Py-ART calculate_snr_from_reflectivity
 - Unfolding of PHIDP using Py-ART get_phidp_unf
 - Recalculation of KDP using CSU radartools Bringi technique
@@ -23,8 +23,8 @@ and [col_processing](https://github.com/vlouf/cpol_processing).
 - Correction of ZDR from noise (Schuur et al. 2003 NOAA report (p7 eq 6))
 
 ### Use
-pipeline notebook: applies dual pol processing (filtering, attenuation corrections)
+- pipeline notebook: applies dual pol processing (filtering, attenuation corrections)
 and hail retrievals to various radar formats (cfradial, odimh5, mdv). Note that radiosonde data must be supplied in netcdf format.
-inspection_plot notebook: plots dual pol fields and all hail retrievals
+- inspection_plot notebook: plots dual pol fields and all hail retrievals
 
 

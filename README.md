@@ -4,6 +4,8 @@ This toolkit provides a collection of hail retrieval techniques for
 weather radar data built upon [Py-ART](https://github.com/ARM-DOE/pyart/)
 and [col_processing](https://github.com/vlouf/cpol_processing). 
 
+![7th nov mt cootha x1 pano-small](https://user-images.githubusercontent.com/16043083/41452799-c07be16c-70b6-11e8-9047-4fd92e66a4fb.jpg)
+
 ### Dependencies
 - [CSU Radartools](https://github.com/CSU-Radarmet/CSU_RadarTools)
 - [Py-ART](https://github.com/ARM-DOE/pyart/)

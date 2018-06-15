@@ -25,8 +25,8 @@ and [col_processing](https://github.com/vlouf/cpol_processing).
 - Correction of ZDR from noise (Schuur et al. 2003 NOAA report (p7 eq 6))
 
 ### Use
-- pipeline notebook: applies dual pol processing (filtering, attenuation corrections)
+- [pipeline notebook](https://github.com/joshuass/pyHail/blob/master/inspection_plot.ipynb): applies dual pol processing (filtering, attenuation corrections)
 and hail retrievals to various radar formats (cfradial, odimh5, mdv). Note that radiosonde data must be supplied in netcdf format.
-- inspection_plot notebook: plots dual pol fields and all hail retrievals
+- [inspection_plot notebook](https://github.com/joshuass/pyHail/blob/master/pipeline.ipynb): plots dual pol fields and all hail retrievals
 
 

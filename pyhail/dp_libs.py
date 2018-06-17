@@ -1,13 +1,18 @@
+"""
+methods for dual polarmetic radar data sub-module of pyhail
+These functions have been sourced from the cpol_processing library
+https://github.com/vlouf/cpol_processing
+
+Contains filters, corrections and retrievals.
+
+Joshua Soderholm - 15 June 2018
+"""
+
 import pyart
 import numpy as np
 import netCDF4
 from copy import deepcopy
 from csu_radartools import csu_kdp, csu_fhc
-
-"""
-These functions have been sourced from the cpol_processing library
-https://github.com/vlouf/cpol_processing
-"""
 
 def unfold_raw_phidp(radar, phi_name="PHIDP", refl_field='DBZH', ncp_field='NCP', rhv_field='RHOHV'):
     """

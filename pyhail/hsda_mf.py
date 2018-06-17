@@ -1,3 +1,13 @@
+"""
+Hail Size Discrimination Algrothim membership functions sub-module of pyhail
+
+Joshua Soderholm - 15 June 2018
+"""
+
+####################################################################
+# Functions for within membership functions
+####################################################################
+
 def c(offset,zh,dzdr):
     return offset
 
@@ -31,8 +41,30 @@ def g3(offset,zh,dzdr):
     out = out + offset
     return out
 
-def build_mf():
 
+
+def build_mf():
+    """
+	build membership functions for HSDA retrieval
+	
+	syntax:
+		a#: height interval # (1 is the highest, 6 is the lowest)
+		h#: hail size interval # (1 is >25, 2 is 25-50, 3 is >50)
+
+	TODO: build confidence vector
+
+    Parameters:
+    ===========
+
+    Returns:
+    ========
+    w: dict
+    	Field weights at the 6 height intervals and 3 fields
+	mf: dict
+		Trapezoid membership function parameters for the 6 height intervals, 3 hail sizes and 3 fields
+	q: dict
+		Confidence vector (currently just 1)
+    """
     #weights
     w = {'a1.zh': 1.0, 'a1.zdr': 0.3, 'a1.rhv': 0.6,
         'a2.zh': 1.0, 'a2.zdr': 0.3, 'a2.rhv': 0.6,

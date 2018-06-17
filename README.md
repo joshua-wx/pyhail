@@ -9,6 +9,9 @@ and [col_processing](https://github.com/vlouf/cpol_processing).
 ### Dependencies
 - [CSU Radartools](https://github.com/CSU-Radarmet/CSU_RadarTools)
 - [Py-ART](https://github.com/ARM-DOE/pyart/)
+- [cpol_processing](https://github.com/vlouf/cpol_processing)
+- numpy
+- netCDF4
 
 ### Hail Retrivals
 - Hail Size Discrimination Algorithm - HSDA ([Ortega et al. 2016](https://journals.ametsoc.org/doi/10.1175/JAMC-D-15-0203.1))

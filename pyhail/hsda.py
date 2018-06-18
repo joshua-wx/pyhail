@@ -67,7 +67,7 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
     w, q, mf   = hsda_mf.build_mf()
     
     #calc pixel alt
-    rg, azg  = np.meshgrid(radar.range['data'], radar.azimuth['data'])
+    rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     rg, eleg  = np.meshgrid(radar.range['data'], radar.elevation['data'])
     _, _, alt = pyart.core.antenna_to_cartesian(rg / 1000.0, azg, eleg)  
     

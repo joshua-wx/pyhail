@@ -15,8 +15,17 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 - Hail Differential Reflectivity - HDR ([Depue et al. 2007](https://doi.org/10.1175/JAM2529.1))
 - Maximum Expected Size of Hail - MESH ([Witt et al. 1998](https://journals.ametsoc.org/doi/10.1175/1520-0434%281998%29013%3C0286%3AAEHDAF%3E2.0.CO%3B2))
 
+### Install
+To install PyHail, you can either download and unpack the zip file of the source code or use git to checkout the repository:
+
+`git clone git@github.com:joshua-wx/PyHail.git`
+
+To install in your home directory, use:
+
+`python setup.py install --user`
+
 ### Libraries used for Dual Pol Corrections
-- [cpol_processing](https://github.com/vlouf/cpol_processing)
+- [CPOL Processing](https://github.com/vlouf/cpol_processing)
 - [CSU Radartools](https://github.com/CSU-Radarmet/CSU_RadarTools)
 
 ### Dual Pol Corrections
@@ -29,8 +38,9 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 - Correction of ZDR from noise using cpol_processing (Schuur et al. 2003 NOAA report (p7 eq 6))
 
 ### Use
-- [pipeline notebook](https://github.com/joshuass/pyHail/blob/master/inspection_plot.ipynb): applies dual pol processing (filtering, attenuation corrections)
+- [Pipeline Notebook](https://github.com/joshua-wx/PyHail/blob/master/inspection_plot.ipynb): applies dual pol processing (filtering, attenuation corrections)
 and hail retrievals to various radar formats (cfradial, odimh5, mdv). Note that radiosonde data must be supplied in netcdf format.
-- [inspection_plot notebook](https://github.com/joshuass/pyHail/blob/master/pipeline.ipynb): plots dual pol fields and all hail retrievals
+- [Pipeline Multiproc Notebook](https://github.com/joshua-wx/PyHail/blob/master/notebooks/pipeline_multiproc.ipynb): Multiprocessing version of pipeline
+- [Inspection Plot Notebook](https://github.com/joshua-wx/PyHail/blob/master/pipeline.ipynb): plots dual pol fields and all hail retrievals
 
 

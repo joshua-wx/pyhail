@@ -3,8 +3,6 @@
 This toolkit provides a collection of hail retrieval techniques for
 weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit.
 
-![7th nov mt cootha x1 pano-small](https://user-images.githubusercontent.com/16043083/41452799-c07be16c-70b6-11e8-9047-4fd92e66a4fb.jpg)
-
 ### Dependencies
 - [Py-ART](https://github.com/ARM-DOE/pyart/)
 - numpy

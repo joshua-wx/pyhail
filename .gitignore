@@ -10,5 +10,7 @@ notebooks/.ipynb_checkpoints
 build
 references
 release
-pyHail.egg-info
+pyhail.egg-info
 test
+image_out
+.ipynb_checkpoints

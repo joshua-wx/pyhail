@@ -8,7 +8,7 @@ Joshua Soderholm - 15 June 2018
 """
 
 import pyart
-import common
+from  pyhail import common
 import netCDF4
 import numpy as np
 

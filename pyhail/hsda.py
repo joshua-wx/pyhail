@@ -7,38 +7,37 @@ requires temperature, reflectivity, differential reflectivity and cross correlat
 Joshua Soderholm - 15 June 2018
 """
 
-import hsda_mf
-import common
+from pyhail import common, hsda_mf
 import numpy as np
 import netCDF4
 
 def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
 
-	"""
- 	Wrapper function for HSDA processing
+    """
+    Wrapper function for HSDA processing
 
     Parameters:
     ===========
     radar: struct
         Py-ART radar object.
-	fieldnames: dict
-		map to pyart field names
-	snd_input: string
-		sounding full filename (inc path)
-	hca_hail_idx: list
-		index of hail related fields in classification to apply HSDA
-	hca_hsdr_idx: list
-		index to use for three hsda classes in exisiting classification field
-	dzdr:
-		offset for differential reflectivity
+    fieldnames: dict
+        map to pyart field names
+    snd_input: string
+        sounding full filename (inc path)
+    hca_hail_idx: list
+        index of hail related fields in classification to apply HSDA
+    hca_hsdr_idx: list
+        index to use for three hsda classes in exisiting classification field
+    dzdr:
+        offset for differential reflectivity
 
     Returns:
     ========
     hca_hsda: ndarray
-		hca including extra hsda classes
-	
+        hca including extra hsda classes
+
     """
-	
+
     #build sounding data
     snd_data = netCDF4.Dataset(snd_input)
     snd_temp = snd_data.variables["temp"][:]
@@ -49,10 +48,10 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
     #run interpolation
     wbt_minus25C = common.sounding_interp(snd_wbt,snd_geop,-25)/1000
     wbt_0C       = common.sounding_interp(snd_wbt,snd_geop,0)/1000
-    
+
     #building consts
     const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx, 'hca_hsda_idx':hca_hsda_idx}
-    
+
     #load data
     zh_cf  = radar.fields[fieldnames['dbzh']]['data']
     zdr_cf = radar.fields[fieldnames['zdr']]['data']
@@ -107,35 +106,35 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
 
 def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 
-	"""
- 	calculates the hail size class for a radar voxel
+    """
+    calculates the hail size class for a radar voxel
 
     Parameters:
     ===========
     alt: ndarray
-		altitude of voxel (km)
+        altitude of voxel (km)
     zh: ndarray
-		zh value for voxel (dbz)
+        zh value for voxel (dbz)
     zdr: ndarray
-		zdr value for voxel (db)
+        zdr value for voxel (db)
     rhv: ndarray
-		CC value for voxel
+        CC value for voxel
     mf: dict
-		hsda memebership functions
+        hsda memebership functions
     q: float
-		confidence constant
+        confidence constant
     w: dict
-		field height interval weights
+        field height interval weights
     const: dict
-		containing dzdr and height constantssses in exisiting classification field
-	dzdr: float
-		offset for differential reflectivity
+        containing dzdr and height constantssses in exisiting classification field
+    dzdr: float
+        offset for differential reflectivity
 
     Returns:
     ========
     out: ndarray
-		hail size class for every valid element (1: <25mm, 2: 25-50mm, 3: >50mm)
-	
+        hail size class for every valid element (1: <25mm, 2: 25-50mm, 3: >50mm)
+
     """
 
     #allocate alt field
@@ -176,35 +175,35 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 
 def calc_ag(h_field,alt_field,zh,zdr,rhv,mf,q,w,const):
 
-	"""
- 	calculates the polarmetic aggregates for a hail size class
+    """
+    calculates the polarmetic aggregates for a hail size class
 
     Parameters:
     ===========
     h_field: string
-		hail size field name (h1,h2 or h3)
+        hail size field name (h1,h2 or h3)
     alt_field: string
-		alt field name (alt1,...alt6)
+        alt field name (alt1,...alt6)
     zh: float
-		zh value for voxel (dbz)
+        zh value for voxel (dbz)
     zdr: float
-		zdr value for voxel (db)
+        zdr value for voxel (db)
     rhv: float
-		CC value for voxel
+        CC value for voxel
     mf: dict
-		hsda memebership functions
+        hsda memebership functions
     q: float
-		confidence constant
+        confidence constant
     w: dict
-		field height interval weights
+        field height interval weights
     const: dict
-		containing dzdr and height constantssses in exisiting classification field
+        containing dzdr and height constantssses in exisiting classification field
 
     Returns:
     ========
     out: ndarray
-		aggregate value for hail size class
-	
+        aggregate value for hail size class
+
     """
 
     #weight
@@ -228,27 +227,27 @@ def calc_ag(h_field,alt_field,zh,zdr,rhv,mf,q,w,const):
 
 def h_mf(var,zh,mf_const,const):
 
-	"""
- 	calculates the membership function values for a polarmetic variable
+    """
+    calculates the membership function values for a polarmetic variable
 
     Parameters:
     ===========
     var: float
-		variable value to apply to memebership functions
+        variable value to apply to memebership functions
     h_sz: string
-		hail size field name (h1,h2 or h3)
+        hail size field name (h1,h2 or h3)
     zh: float
        zh value for voxel (dbz)
     const: dict
-    	containing dzdr and height constants
+        containing dzdr and height constants
     mf_const: dict
-		trap membership function values
+        trap membership function values
 
     Returns:
     ========
     out: float
-		membership function value for input var
-	
+        membership function value for input var
+
     """
 
     #if cell, apply functions to get trap values

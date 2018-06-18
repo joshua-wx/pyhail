@@ -10,6 +10,7 @@ Joshua Soderholm - 15 June 2018
 from pyhail import common, hsda_mf
 import numpy as np
 import netCDF4
+import pyart
 
 def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
 

@@ -138,19 +138,22 @@ def main(radar,fieldnames,out_ffn,snd_input):
                   'standard_name': 'hail_KE', 'comments': 'Witt et al. 1998'}
     grid_150km.add_field('hail_KE', hail_KE_field, replace_existing=True) 
     
-    SHI            = np.tile(SHI, (grid_sz[0],1,1)) #expand to 3D to prevent size error when appending
-    SHI_field      = {'data': SHI, 'units': 'J-1s-1', 'long_name': 'Severe Hail Index',
-                  'standard_name': 'SHI', 'comments': 'Witt et al. 1998'}
+    SHI_grid         = np.zeros_like(hail_KE)
+    SHI_grid[0,:,:]  = SHI
+    SHI_field        = {'data': SHI_grid, 'units': 'J-1s-1', 'long_name': 'Severe Hail Index',
+                        'standard_name': 'SHI', 'comments': 'Witt et al. 1998, only valid in the first level'}
     grid_150km.add_field('SHI', SHI_field, replace_existing=True) 
 
-    MESH           = np.tile(MESH, (grid_sz[0],1,1)) #expand to 3D to prevent size error when appending
-    MESH_field     = {'data': MESH, 'units': 'mm', 'long_name': 'Maximum Expected Size of Hail',
-                  'standard_name': 'MESH', 'comments': 'Witt et al. 1998'}
+    MESH_grid        = np.zeros_like(hail_KE)
+    MESH_grid[0,:,:] = MESH    
+    MESH_field       = {'data': MESH_grid, 'units': 'mm', 'long_name': 'Maximum Expected Size of Hail',
+                        'standard_name': 'MESH', 'comments': 'Witt et al. 1998, only valid in the first level'}
     grid_150km.add_field('MESH', MESH_field, replace_existing=True) 
 
-    POSH           = np.tile(POSH, (grid_sz[0],1,1)) #expand to 3D to prevent size error when appending
-    POSH_field     = {'data': POSH, 'units': '%', 'long_name': 'Probability of Severe Hail',
-                  'standard_name': 'POSH', 'comments': 'Witt et al. 1998'}
+    POSH_grid        = np.zeros_like(hail_KE)
+    POSH_grid[0,:,:] = POSH    
+    POSH_field       = {'data': POSH_grid, 'units': '%', 'long_name': 'Probability of Severe Hail',
+                        'standard_name': 'POSH', 'comments': 'Witt et al. 1998, only valid in the first level'}
     grid_150km.add_field('POSH', POSH_field, replace_existing=True) 
     
     # Saving data to file

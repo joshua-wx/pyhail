@@ -94,31 +94,3 @@ def smooth_ppi_rays(ppi_data,n):
     out      = np.ma.hstack((ppi_data[:,:offset],ppi_sma,ppi_data[:,-offset:]))
 
     return out
-
-def calc_pixel_alt(radar_rng,radar_elv,data_shape):
-    """
-    calculate a altitude array for the radar volume. NEED TO REMOVE AND SOURCE FROM RADAR OBJECT
-
-    Parameters:
-    ===========
-    radar_rng:
-        ndarray vector of radar range (m)
-    radar_elv:
-        ndarray vector of radar elevation (deg)
-    data_shape:
-        size of radar data array (i,j)
-
-    Returns:
-    ========
-    out:
-        altitude ndarray (km)
-    """
-    #calc radar voxel heights in km
-    ra         = np.tile(radar_rng,(data_shape[0],1))
-    elev       = np.rot90(np.tile(radar_elv,(data_shape[1],1)),k=3)
-    ke         = 4/3
-    a          = 6371.*1000
-    alt        = np.sqrt(ra**2+(ke*a)**2 + 2*ra*ke*a*np.sin(elev*np.pi/180))-ke*a
-    out        = alt/1000
-
-    return out

@@ -65,12 +65,12 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
 
     #build membership functions
     w, q, mf   = hsda_mf.build_mf()
+    
     #calc pixel alt
-    r_rng      = radar.range['data']
-    r_elv      = radar.elevation['data']
-    data_shape = np.shape(zh_cf)
-    alt        = common.calc_pixel_alt(r_rng,r_elv,data_shape)
-
+    rg, azg  = np.meshgrid(radar.range['data'], radar.azimuth['data'])
+    rg, eleg  = np.meshgrid(radar.range['data'], radar.elevation['data'])
+    _, _, alt = pyart.core.antenna_to_cartesian(rg / 1000.0, azg, eleg)  
+    
     #find all pixels in hca which match the hail classes
     #for each pixel, apply transform
     hail_mask = np.isin(hca, const['hca_hail_idx'])

@@ -87,10 +87,8 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
         pixel_hsda = h_sz(tmp_alt,tmp_zh,tmp_zdr,tmp_rhv,mf,q,w,const)
         hsda[i]    = pixel_hsda
 
-	#add hsda field to radar object
-
     #return radar object
-    return radar
+    return hsda
 
 def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 

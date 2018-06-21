@@ -43,7 +43,7 @@ def _get_latlon(radgrid,fieldnames):
 
     return longitude, latitude
 
-def main(radar,fieldnames,out_ffn,snd_input, grid_sz_m, ):
+def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -82,23 +82,16 @@ def main(radar,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     #run interpolation
     snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20)/1000
     snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)/1000
-    
-    # Gridding 150 x 150 x 20 km on a 1x1x1km grid using a 1km roi
-    grid_150km = pyart.map.grid_from_radars(
-        radar,
-        grid_shape=(41, 301, 301),
-        grid_limits=((0, 20000), (-150000.0, 150000.0), (-150000.0, 150000.0)),
-        roi_func='constant', constant_roi=1000)
 
     # Latitude Longitude field for each point.
-    longitude, latitude = _get_latlon(grid_150km,fieldnames)
-    grid_150km.add_field('longitude', longitude)
-    grid_150km.add_field('latitude', latitude)
+    longitude, latitude = _get_latlon(grid,fieldnames)
+    grid.add_field('longitude', longitude)
+    grid.add_field('latitude', latitude)
     
     # extract grids
-    refl_grid = grid_150km.fields[fieldnames['dbzh']]['data']
+    refl_grid = grid.fields[fieldnames['dbzh']]['data']
     grid_sz   = np.shape(refl_grid)
-    alt_vec   = grid_150km.z['data']
+    alt_vec   = grid.z['data']
     alt_grid  = np.tile(alt_vec,(grid_sz[1],grid_sz[2],1))
     alt_grid  = np.swapaxes(alt_grid,0,2)
     
@@ -133,25 +126,25 @@ def main(radar,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     #add grids to grid object
     hail_KE_field   = {'data': hail_KE, 'units': 'Jm-2s-1', 'long_name': 'Hail Kinetic Energy',
                   'standard_name': 'hail_KE', 'comments': 'Witt et al. 1998'}
-    grid_150km.add_field('hail_KE', hail_KE_field, replace_existing=True) 
+    grid.add_field('hail_KE', hail_KE_field, replace_existing=True) 
     
     SHI_grid         = np.zeros_like(hail_KE)
     SHI_grid[0,:,:]  = SHI
     SHI_field        = {'data': SHI_grid, 'units': 'J-1s-1', 'long_name': 'Severe Hail Index',
                         'standard_name': 'SHI', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid_150km.add_field('SHI', SHI_field, replace_existing=True) 
+    grid.add_field('SHI', SHI_field, replace_existing=True) 
 
     MESH_grid        = np.zeros_like(hail_KE)
     MESH_grid[0,:,:] = MESH    
     MESH_field       = {'data': MESH_grid, 'units': 'mm', 'long_name': 'Maximum Expected Size of Hail',
                         'standard_name': 'MESH', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid_150km.add_field('MESH', MESH_field, replace_existing=True) 
+    grid.add_field('MESH', MESH_field, replace_existing=True) 
 
     POSH_grid        = np.zeros_like(hail_KE)
     POSH_grid[0,:,:] = POSH    
     POSH_field       = {'data': POSH_grid, 'units': '%', 'long_name': 'Probability of Severe Hail',
                         'standard_name': 'POSH', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid_150km.add_field('POSH', POSH_field, replace_existing=True) 
+    grid.add_field('POSH', POSH_field, replace_existing=True) 
     
     # Saving data to file
-    grid_150km.write(out_ffn)
+    grid.write(out_ffn)

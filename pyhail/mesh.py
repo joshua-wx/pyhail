@@ -43,7 +43,7 @@ def _get_latlon(radgrid,fieldnames):
 
     return longitude, latitude
 
-def main(radar,fieldnames,out_ffn,snd_input):
+def main(radar,fieldnames,out_ffn,snd_input, grid_sz_m, ):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -72,9 +72,6 @@ def main(radar,fieldnames,out_ffn,snd_input):
     #MESH constants
     z_lower_bound = 40
     z_upper_bound = 50
-	
-	#Grid size
-    grid_sz_m     = 1000
     
     #build sounding data
     snd_data = netCDF4.Dataset(snd_input)

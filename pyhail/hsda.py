@@ -12,7 +12,7 @@ import numpy as np
 import netCDF4
 import pyart
 
-def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
+def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
 
     """
     Wrapper function for HSDA processing
@@ -27,15 +27,13 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
         sounding full filename (inc path)
     hca_hail_idx: list
         index of hail related fields in classification to apply HSDA
-    hca_hsdr_idx: list
-        index to use for three hsda classes in exisiting classification field
     dzdr:
         offset for differential reflectivity
 
     Returns:
     ========
-    hca_hsda: ndarray
-        hca including extra hsda classes
+    hsda: ndarray
+        hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50
 
     """
 
@@ -89,21 +87,10 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,hca_hsda_idx,dzdr):
         pixel_hsda = h_sz(tmp_alt,tmp_zh,tmp_zdr,tmp_rhv,mf,q,w,const)
         hsda[i]    = pixel_hsda
 
-    #update hca with new hsda values using hca_hsda_index
-    hca_hsda  = np.copy(hca)
+	#add hsda field to radar object
 
-    hail_mask1 = np.isin(hsda, 1)
-    hail_idx1  = np.where(hail_mask1)
-    hca_hsda[hail_mask1] = const['hca_hsda_idx'][0]
-    hail_mask2 = np.isin(hsda, 2)
-    hail_idx2  = np.where(hail_mask2)
-    hca_hsda[hail_mask2] = const['hca_hsda_idx'][1]
-    hail_mask3 = np.isin(hsda, 3)
-    hail_idx3  = np.where(hail_mask3)
-    hca_hsda[hail_mask3] = const['hca_hsda_idx'][2]
-
-    #return hsda grid
-    return hca_hsda
+    #return radar object
+    return radar
 
 def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 

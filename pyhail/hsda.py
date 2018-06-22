@@ -83,23 +83,23 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
 
     #loop through every pixel
     hsda = np.zeros(hca.shape)
-    # try:
-    for i in np.nditer(hail_idx):
-        tmp_alt   = alt[i]
-        tmp_zh    = zh_cf_smooth[i]
-        tmp_zdr   = zdr_cf_smooth[i]
-        tmp_rhv   = rhv_cf_smooth[i]
-        tmp_q_zh  = q['zh'][i]
-        tmp_q_zdr = q['zdr'][i]
-        tmp_q_rhz = q['rhv'][i]
-        tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhz}
-        if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
-            continue
-        pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
-        hsda[i]    = pixel_hsda
-    # except:
-    #     print('Error processing HSDA')
-    #     pass
+    try:
+        for i in np.nditer(hail_idx):
+            tmp_alt   = alt[i]
+            tmp_zh    = zh_cf_smooth[i]
+            tmp_zdr   = zdr_cf_smooth[i]
+            tmp_rhv   = rhv_cf_smooth[i]
+            tmp_q_zh  = q['zh'][i]
+            tmp_q_zdr = q['zdr'][i]
+            tmp_q_rhv = q['rhv'][i]     
+            tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhv}
+            if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
+                continue
+            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
+            hsda[i]    = pixel_hsda
+    except:
+        print('Error processing HSDA')
+        pass
 
     #generate meta        
     the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"

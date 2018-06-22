@@ -28,8 +28,8 @@ def main(radar,fieldnames):
         ndarray containing hail differential reflectivity (mm)
     """
     #extract fields
-    dbz = radar.fields[fieldnames['dbzh']]['data']
-    zdr = radar.fields[fieldnames['zdr']]['data']
+    dbz = radar.fields[fieldnames['dbzh_corr']]['data']
+    zdr = radar.fields[fieldnames['zdr_corr']]['data']
 
     #calculate hdr
     #apply primary function

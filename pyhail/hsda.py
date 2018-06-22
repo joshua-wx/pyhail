@@ -49,12 +49,12 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
     wbt_0C       = common.sounding_interp(snd_wbt,snd_geop,0)/1000
 
     #building consts
-    const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx, 'hca_hsda_idx':hca_hsda_idx}
+    const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx}
 
     #load data
-    zh_cf  = radar.fields[fieldnames['dbzh']]['data']
-    zdr_cf = radar.fields[fieldnames['zdr']]['data']
-    rhv_cf = radar.fields[fieldnames['rhv']]['data']
+    zh_cf  = radar.fields[fieldnames['dbzh_corr']]['data']
+    zdr_cf = radar.fields[fieldnames['zdr_corr']]['data']
+    rhv_cf = radar.fields[fieldnames['rhv_corr']]['data']
     hca    = radar.fields[fieldnames['hca']]['data']
 
     #smooth radar data
@@ -77,15 +77,16 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
 
     #loop through every pixel
     hsda = np.zeros(hca.shape)
-    for i in np.nditer(hail_idx):
-        tmp_alt = alt[i]
-        tmp_zh  = zh_cf_smooth[i]
-        tmp_zdr = zdr_cf_smooth[i]
-        tmp_rhv = rhv_cf_smooth[i]
-        if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
-            continue
-        pixel_hsda = h_sz(tmp_alt,tmp_zh,tmp_zdr,tmp_rhv,mf,q,w,const)
-        hsda[i]    = pixel_hsda
+    if hail_idx:
+        for i in np.nditer(hail_idx):
+            tmp_alt = alt[i]
+            tmp_zh  = zh_cf_smooth[i]
+            tmp_zdr = zdr_cf_smooth[i]
+            tmp_rhv = rhv_cf_smooth[i]
+            if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
+                continue
+            pixel_hsda = h_sz(tmp_alt,tmp_zh,tmp_zdr,tmp_rhv,mf,q,w,const)
+            hsda[i]    = pixel_hsda
 
     #return radar object
     return hsda

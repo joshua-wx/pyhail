@@ -12,7 +12,7 @@ from  pyhail import common
 import netCDF4
 import numpy as np
 
-def _get_latlon(radgrid,fieldnames):
+def _get_latlon(radgrid, fnames):
     """
     Generates lattitude and longitude arrays.
     Parameters:
@@ -29,21 +29,21 @@ def _get_latlon(radgrid,fieldnames):
 	From cpol_processing: https://github.com/vlouf/cpol_processing
     """
     # Declare array, filled 0 in order to not have a masked array.
-    lontot = np.zeros_like(radgrid.fields[fieldnames['dbzh']]['data'].filled(0))
-    lattot = np.zeros_like(radgrid.fields[fieldnames['dbzh']]['data'].filled(0))
+    lontot = np.zeros_like(radgrid.fields[fnames['dbzh']]['data'].filled(0))
+    lattot = np.zeros_like(radgrid.fields[fnames['dbzh']]['data'].filled(0))
 
     for lvl in range(radgrid.nz):
         lontot[lvl, :, :], lattot[lvl, :, :] = radgrid.get_point_longitude_latitude(lvl)
 
     longitude = pyart.config.get_metadata('longitude')
-    latitude = pyart.config.get_metadata('latitude')
+    latitude  = pyart.config.get_metadata('latitude')
 
     longitude['data'] = lontot
-    latitude['data'] = lattot
+    latitude['data']  = lattot
 
     return longitude, latitude
 
-def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
+def main(grid, fnames, out_ffn, snd_input):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -55,7 +55,7 @@ def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     ===========
     radgrid: struct
         Py-ART grid object.
-	fieldnames: dict
+	fnames: dict
 		map to pyart field names
 	out_ffn: string
 		output full filename (inc path)
@@ -68,7 +68,6 @@ def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
 	
     """
 
-    
     #MESH constants
     z_lower_bound = 40
     z_upper_bound = 50
@@ -84,16 +83,16 @@ def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)/1000
 
     # Latitude Longitude field for each point.
-    longitude, latitude = _get_latlon(grid,fieldnames)
+    longitude, latitude = _get_latlon(grid, fnames)
     grid.add_field('longitude', longitude)
     grid.add_field('latitude', latitude)
     
     # extract grids
-    refl_grid = grid.fields[fieldnames['dbzh']]['data']
+    refl_grid = grid.fields[fnames['dbzh_corr']]['data']
     grid_sz   = np.shape(refl_grid)
     alt_vec   = grid.z['data']
-    alt_grid  = np.tile(alt_vec,(grid_sz[1],grid_sz[2],1))
-    alt_grid  = np.swapaxes(alt_grid,0,2)
+    alt_grid  = np.tile(alt_vec,(grid_sz[1], grid_sz[2], 1))
+    alt_grid  = np.swapaxes(alt_grid, 0, 2)
     
     #calc reflectivity weighting function
     weight_ref                             = (refl_grid - z_lower_bound)/(z_upper_bound - z_lower_bound)
@@ -109,6 +108,7 @@ def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     weight_height[alt_grid >= snd_t_minus20C] = 1
 
     #calc severe hail index
+    grid_sz_m = alt_vec[1] - alt_vec[0]
     SHI = 0.1 * np.sum(weight_height * hail_KE, axis=0) * grid_sz_m
 
     #calc maximum estimated severe hail (mm)
@@ -126,25 +126,25 @@ def main(grid,fieldnames,out_ffn,snd_input, grid_sz_m, ):
     #add grids to grid object
     hail_KE_field   = {'data': hail_KE, 'units': 'Jm-2s-1', 'long_name': 'Hail Kinetic Energy',
                   'standard_name': 'hail_KE', 'comments': 'Witt et al. 1998'}
-    grid.add_field('hail_KE', hail_KE_field, replace_existing=True) 
+    grid.add_field(fnames['hail_ke'], hail_KE_field, replace_existing=True) 
     
     SHI_grid         = np.zeros_like(hail_KE)
     SHI_grid[0,:,:]  = SHI
     SHI_field        = {'data': SHI_grid, 'units': 'J-1s-1', 'long_name': 'Severe Hail Index',
                         'standard_name': 'SHI', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid.add_field('SHI', SHI_field, replace_existing=True) 
+    grid.add_field(fnames['shi'], SHI_field, replace_existing=True) 
 
     MESH_grid        = np.zeros_like(hail_KE)
     MESH_grid[0,:,:] = MESH    
     MESH_field       = {'data': MESH_grid, 'units': 'mm', 'long_name': 'Maximum Expected Size of Hail',
                         'standard_name': 'MESH', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid.add_field('MESH', MESH_field, replace_existing=True) 
+    grid.add_field(fnames['mesh'], MESH_field, replace_existing=True) 
 
     POSH_grid        = np.zeros_like(hail_KE)
     POSH_grid[0,:,:] = POSH    
     POSH_field       = {'data': POSH_grid, 'units': '%', 'long_name': 'Probability of Severe Hail',
                         'standard_name': 'POSH', 'comments': 'Witt et al. 1998, only valid in the first level'}
-    grid.add_field('POSH', POSH_field, replace_existing=True) 
+    grid.add_field(fnames['posh'], POSH_field, replace_existing=True) 
     
     # Saving data to file
     grid.write(out_ffn)

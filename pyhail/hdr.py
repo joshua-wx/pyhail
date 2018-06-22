@@ -40,5 +40,10 @@ def main(radar,fieldnames):
     #apply to zhh
     hdr = dbz - zdr_fun
 
+    #generate meta
+    the_comments = "Applies the transform from hdr to mm used by Depue et al. 2009"
+    hdr_meta     = {'data': hdr, 'units': 'mm', 'long_name': 'Hail Differential Reflectivity',
+                  'standard_name': 'HDR', 'comments': the_comments}
+    
     #return hdr data 
-    return hdr
+    return hdr_meta

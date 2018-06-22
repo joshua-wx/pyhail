@@ -7,6 +7,7 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 - [Py-ART](https://github.com/ARM-DOE/pyart/)
 - numpy
 - netCDF4
+- [wradlib](https://github.com/wradlib/wradlib)
 
 ### Hail Retrivals
 - Hail Size Discrimination Algorithm - HSDA ([Ortega et al. 2016](https://journals.ametsoc.org/doi/10.1175/JAMC-D-15-0203.1))

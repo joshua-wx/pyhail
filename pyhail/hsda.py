@@ -55,6 +55,9 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
     zh_cf  = radar.fields[fieldnames['dbzh_corr']]['data']
     zdr_cf = radar.fields[fieldnames['zdr_corr']]['data']
     rhv_cf = radar.fields[fieldnames['rhv_corr']]['data']
+    phi_cf = radar.fields[fieldnames['phi_bringi']]['data']
+    snr_cf = radar.fields[fieldnames['snr']]['data']
+    cbb_cf = radar.fields[fieldnames['cbb']]['data']
     hca    = radar.fields[fieldnames['hca']]['data']
 
     #smooth radar data
@@ -63,7 +66,10 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
     rhv_cf_smooth = common.smooth_ppi_rays(rhv_cf,5)
 
     #build membership functions
-    w, q, mf   = hsda_mf.build_mf()
+    w, mf   = hsda_mf.build_mf()
+    
+    #generate quality vector
+    q = hsda_q(zh_cf_smooth, phi_cf, rhv_cf_smooth, phi_cf, cbb_cf, cbb_threshold=0.5)
     
     #calc pixel alt
     rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
@@ -77,19 +83,31 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
 
     #loop through every pixel
     hsda = np.zeros(hca.shape)
-    if hail_idx:
-        for i in np.nditer(hail_idx):
-            tmp_alt = alt[i]
-            tmp_zh  = zh_cf_smooth[i]
-            tmp_zdr = zdr_cf_smooth[i]
-            tmp_rhv = rhv_cf_smooth[i]
-            if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
-                continue
-            pixel_hsda = h_sz(tmp_alt,tmp_zh,tmp_zdr,tmp_rhv,mf,q,w,const)
-            hsda[i]    = pixel_hsda
+    # try:
+    for i in np.nditer(hail_idx):
+        tmp_alt   = alt[i]
+        tmp_zh    = zh_cf_smooth[i]
+        tmp_zdr   = zdr_cf_smooth[i]
+        tmp_rhv   = rhv_cf_smooth[i]
+        tmp_q_zh  = q['zh'][i]
+        tmp_q_zdr = q['zdr'][i]
+        tmp_q_rhz = q['rhv'][i]
+        tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhz}
+        if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
+            continue
+        pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
+        hsda[i]    = pixel_hsda
+    # except:
+    #     print('Error processing HSDA')
+    #     pass
 
+    #generate meta        
+    the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
+    hsda_meta    = {'data': hsda, 'units': ' ', 'long_name': 'Hail Size Discrimination Algorithm',
+                  'standard_name': 'HSDA', 'comments': the_comments}
+    
     #return radar object
-    return hsda
+    return hsda_meta
 
 def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 
@@ -98,18 +116,18 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
 
     Parameters:
     ===========
-    alt: ndarray
+    alt: float
         altitude of voxel (km)
-    zh: ndarray
+    zh: float
         zh value for voxel (dbz)
-    zdr: ndarray
+    zdr: float
         zdr value for voxel (db)
-    rhv: ndarray
+    rhv: float
         CC value for voxel
     mf: dict
         hsda memebership functions
-    q: float
-        confidence constant
+    q: dict
+        confidence vecotrs
     w: dict
         field height interval weights
     const: dict
@@ -179,8 +197,8 @@ def calc_ag(h_field,alt_field,zh,zdr,rhv,mf,q,w,const):
         CC value for voxel
     mf: dict
         hsda memebership functions
-    q: float
-        confidence constant
+    q: dict
+        confidence vectors
     w: dict
         field height interval weights
     const: dict
@@ -194,21 +212,21 @@ def calc_ag(h_field,alt_field,zh,zdr,rhv,mf,q,w,const):
     """
 
     #weight
-    w_zh  = w[''.join([alt_field,'.zh'])]
-    w_zdr = w[''.join([alt_field,'.zdr'])]
-    w_rhv = w[''.join([alt_field,'.rhv'])]
+    w_zh  = w[''.join([alt_field, '.zh'])]
+    w_zdr = w[''.join([alt_field, '.zdr'])]
+    w_rhv = w[''.join([alt_field, '.rhv'])]
 
     #mf
-    zh_mf  = h_mf(zh,zh, mf[''.join([alt_field,'.',h_field,'.zh'])], const)
-    zdr_mf = h_mf(zdr,zh,mf[''.join([alt_field,'.',h_field,'.zdr'])],const)
-    rhv_mf = h_mf(rhv,zh,mf[''.join([alt_field,'.',h_field,'.rhv'])],const)
+    zh_mf  = h_mf(zh,  zh, mf[''.join([alt_field,'.',h_field, '.zh'])], const)
+    zdr_mf = h_mf(zdr, zh, mf[''.join([alt_field,'.',h_field, '.zdr'])],const)
+    rhv_mf = h_mf(rhv, zh, mf[''.join([alt_field,'.',h_field, '.rhv'])],const)
 
     #rule 1
     if np.min([zh_mf,zdr_mf,rhv_mf]) < 0.2:
         out = 0
     else:
         #calc h_ag
-        out = np.sum([w_zh*q*zh_mf,w_zdr*q*zdr_mf,w_rhv*q*rhv_mf])/np.sum([w_zh*q,w_zdr*q,w_rhv*q])
+        out = np.sum([w_zh*q['zh']*zh_mf, w_zdr*q['zdr']*zdr_mf, w_rhv*q['rhv']*rhv_mf])  /np.sum([w_zh*q['zh'], w_zdr*q['zdr'], w_rhv*q['rhv']])
 
     return out
 
@@ -241,19 +259,19 @@ def h_mf(var,zh,mf_const,const):
     if type(mf_const[0]) is list:
         fun0   = mf_const[0][0]
         offset = mf_const[0][1]
-        x0     = fun0(offset,zh,const['dzdr'])
+        x0     = fun0(offset, zh, const['dzdr'])
 
         fun1   = mf_const[1][0]
         offset = mf_const[1][1]
-        x1     = fun1(offset,zh,const['dzdr'])
+        x1     = fun1(offset, zh, const['dzdr'])
 
         fun2   = mf_const[2][0]
         offset = mf_const[2][1]
-        x2     = fun2(offset,zh,const['dzdr'])
+        x2     = fun2(offset, zh, const['dzdr'])
 
         fun3   = mf_const[3][0]
         offset = mf_const[3][1]
-        x3     = fun3(offset,zh,const['dzdr'])
+        x3     = fun3(offset, zh, const['dzdr'])
 
     else:
         x0 = mf_const[0]
@@ -262,10 +280,75 @@ def h_mf(var,zh,mf_const,const):
         x3 = mf_const[3]
 
     #apply trap values for var to get membership function output  
-    out = trapmf(np.array([var]),np.array([x0, x1, x2, x3]))
+    out = trapmf(np.array([var]), np.array([x0, x1, x2, x3]))
 
     return out
 
+def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
+
+    """
+    calculates the membership function values for a polarmetic variable
+
+    Parameters:
+    ===========
+    dbzh: array
+        reflectivity (dBZ)
+    phi: array
+        differential phase
+    rhv: array
+       correlation coefficent
+    snr: array
+        signal to noise
+    cbb: array
+        cumulative beam blocking
+    cbb_threshold: float
+        fraction for cbb (typically 0.5)
+
+    Returns:
+    ========
+    q: dict
+        zh: array
+            reflectivity quality array
+        zdr: array
+            differential reflectivity quality array
+        rhv: array
+            correlation coefficent quality array
+    """
+    #parameters
+    Ac = phi / 600
+    Bc = 1.0 / ( 10 ** (0.1 * snr))
+    Cc = phi / 300
+    Dc = (1 - rhv) / 0.5
+    Ec = 3.16228 / (10 ** (0.1 * snr))
+    Fc = phi / 100
+    Gc = Dc 
+    Hc = 1 / (10 ** (0.1 * snr))
+
+    #mask for low quality/dbzh
+    Dc[rhv < 0.8] = 0
+    Gc[rhv < 0.8] = 0
+    Dc[dbzh < 25] = 0
+    Gc[dbzh < 25] = 0
+
+    #apply beam blocking percentage
+    T = cbb / cbb_threshold
+
+    #generate quality vectors
+    q_zh  = np.exp( -0.69 * (Ac**2 + Bc**2 + T**2))
+    q_zdr = np.exp( -0.69 * (Cc**2 + Dc**2 + T**2))
+    q_rhv = np.exp( -0.69 * (Fc**2 + Gc**2 + Hc**2))
+
+    #apply limits
+    q_zh[q_zh<0]   = 0
+    q_zh[q_zh>1]   = 1
+    q_zdr[q_zdr<0] = 0
+    q_zdr[q_zdr>1] = 1
+    q_rhv[q_rhv<0] = 0
+    q_rhv[q_rhv>1] = 1
+    
+    #pack in dict
+    q = {'zh':q_zh, 'zdr':q_zdr, 'rhv':q_rhv}
+    return q
 
 def trapmf(x, abcd):
     """

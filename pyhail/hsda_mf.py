@@ -73,9 +73,6 @@ def build_mf():
         'a5.zh': 0.7, 'a5.zdr': 1.0, 'a5.rhv': 0.6,
         'a6.zh': 0.7, 'a6.zdr': 1.0, 'a6.rhv': 0.6}
 
-    #confidence
-    q = 1
-
     #membership functions
 
     mf =   {'a1.h1.zh':  [45,50,60,65],
@@ -150,4 +147,4 @@ def build_mf():
             'a6.h3.zdr': [[c,-8.75],[c,-7.75],[f3,0.0],[f3,0.3]],
             'a6.h3.rhv': [-1.00,0.00,0.93,0.98]} 
 
-    return w,q,mf
+    return w, mf

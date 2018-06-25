@@ -3,7 +3,7 @@ import glob
 import pyart
 import logging
 import argparse
-
+import h5py
 import numpy as np
 from pyhail import hsda, hdr, mesh, common
 from cpol_processing import processing as cpol_prc
@@ -19,12 +19,22 @@ def calc_beam_blocking(radar_ffn, srtm_ffn):
     try:
         if ".h5" in radar_ffn:
             radar = pyart.aux_io.read_odim_h5(radar_ffn)
+            #read in beamwidth info manually
+            h5file = h5py.File(radar_ffn, 'r')
+            bw     = h5file['how'].attrs['beamwH']
+            h5file.close()
+            ip_dict = radar.instrument_parameters
+            if ip_dict is None:
+                ip_dict = {}
+            ip_dict['radar_beam_width_h'] = {'data':np.array([bw]), 'units':'degrees','standard_name':'beam_width'}
+            radar.instrument_parameters = ip_dict
         elif ".nc" or ".mdv" in radar_ffn:
             radar      = pyart.io.read(radar_ffn)
-    except:
+    except Exception as e:
         print('CBB processing failed for: ',radar_ffn)
+        print(e)
         return None
-    
+
     cbb_meta = common.beam_blocking(radar, srtm_ffn)
     
     return cbb_meta

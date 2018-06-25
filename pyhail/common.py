@@ -96,7 +96,7 @@ def smooth_ppi_rays(ppi_data,n):
 
     return out
 
-def beam_blocking(radar,srtm_ffn):
+def beam_blocking(radar, srtm_ffn):
     """
     Apply the wradlib beam blocking library for the target volume
 
@@ -121,8 +121,8 @@ def beam_blocking(radar,srtm_ffn):
     nrays      = int(radar.nrays / nsweeps)
     nbins      = int(radar.ngates)
     el_list    = radar.fixed_angle['data']
-    bw         = radar.instrument_parameters['radar_beam_width_h']['data'][0]
     range_res  = radar.range['meters_between_gates']
+    bw         = radar.instrument_parameters['radar_beam_width_h']['data'][0]
 
     #grid arrays
     r = np.arange(nbins) * range_res

@@ -1,16 +1,19 @@
 import os
 import glob
-import pyart
 import logging
 import argparse
 import h5py
 import numpy as np
-from pyhail import hsda, hdr, mesh, common
-from cpol_processing import processing as cpol_prc
 from datetime import datetime
 from multiprocessing import Pool
-
 import warnings
+
+import matplotlib
+matplotlib.use('agg')
+import pyart
+
+from pyhail import hsda, hdr, mesh, common
+from cpol_processing import processing as cpol_prc
 
 #TODO
 
@@ -241,7 +244,15 @@ def main():
     data_out_path  = '/'.join([OUT_PATH, RADAR_FOLDER])
     if not os.path.exists(data_out_path):
             os.makedirs(data_out_path)
-
+            
+    #check existance of paths/files
+    if not os.path.isfile(SONDE_FFN):
+        print('sounding file not found, halting', SONDE_FFN)
+        return None
+    if not os.path.isdir(data_in_path):
+        print('vol input path does not exist ',data_in_path)
+        return None   
+    
     #index vol files
     vol_filelist = sorted(glob.glob(data_in_path + '/*.mdv'))
     #if no mdv, check for h5
@@ -363,7 +374,7 @@ if __name__ == '__main__':
     OUT_PATH     = args.out_path
     SONDE_FFN    = args.sonde_ffn
     DZDR         = args.dzdr
-    
+
     # # Creating the general log file.
     # now_dt            = datetime.now()
     # log_fn            = '_'.join([now_dt.strftime('%Y%m%d_%H%M%S'), RADAR_FOLDER, 'pyhail.log'])

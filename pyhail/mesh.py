@@ -29,8 +29,8 @@ def _get_latlon(radgrid, fnames):
 	From cpol_processing: https://github.com/vlouf/cpol_processing
     """
     # Declare array, filled 0 in order to not have a masked array.
-    lontot = np.zeros_like(radgrid.fields[fnames['dbzh']]['data'].filled(0))
-    lattot = np.zeros_like(radgrid.fields[fnames['dbzh']]['data'].filled(0))
+    lontot = np.zeros_like(radgrid.fields[fnames['dbzh_corr']]['data'].filled(0))
+    lattot = np.zeros_like(radgrid.fields[fnames['dbzh_corr']]['data'].filled(0))
 
     for lvl in range(radgrid.nz):
         lontot[lvl, :, :], lattot[lvl, :, :] = radgrid.get_point_longitude_latitude(lvl)

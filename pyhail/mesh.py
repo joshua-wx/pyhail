@@ -43,7 +43,7 @@ def _get_latlon(radgrid, ref_name):
 
     return longitude, latitude
 
-def main(grid, out_ffn, snd_input, ref_name):
+def main(grid, fnames, out_ffn, snd_input, ref_name):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.

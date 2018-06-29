@@ -12,7 +12,7 @@ from  pyhail import common
 import netCDF4
 import numpy as np
 
-def _get_latlon(radgrid, fnames):
+def _get_latlon(radgrid, ref_name):
     """
     Generates lattitude and longitude arrays.
     Parameters:

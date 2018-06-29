@@ -29,8 +29,8 @@ def _get_latlon(radgrid, fnames):
 	From cpol_processing: https://github.com/vlouf/cpol_processing
     """
     # Declare array, filled 0 in order to not have a masked array.
-    lontot = np.zeros_like(radgrid.fields[fnames['dbzh_corr']]['data'].filled(0))
-    lattot = np.zeros_like(radgrid.fields[fnames['dbzh_corr']]['data'].filled(0))
+    lontot = np.zeros_like(radgrid.fields[ref_name]['data'].filled(0))
+    lattot = np.zeros_like(radgrid.fields[ref_name]['data'].filled(0))
 
     for lvl in range(radgrid.nz):
         lontot[lvl, :, :], lattot[lvl, :, :] = radgrid.get_point_longitude_latitude(lvl)
@@ -43,7 +43,7 @@ def _get_latlon(radgrid, fnames):
 
     return longitude, latitude
 
-def main(grid, fnames, out_ffn, snd_input):
+def main(grid, out_ffn, snd_input, ref_name):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -55,12 +55,12 @@ def main(grid, fnames, out_ffn, snd_input):
     ===========
     radgrid: struct
         Py-ART grid object.
-	fnames: dict
-		map to pyart field names
 	out_ffn: string
 		output full filename (inc path)
 	snd_input: string
 		sounding full filename (inc path)
+    ref_name: string
+        name of reflectivity field in radar object
 
     Returns:
     ========
@@ -83,12 +83,12 @@ def main(grid, fnames, out_ffn, snd_input):
     snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)/1000
 
     # Latitude Longitude field for each point.
-    longitude, latitude = _get_latlon(grid, fnames)
+    longitude, latitude = _get_latlon(grid, ref_name)
     grid.add_field('longitude', longitude)
     grid.add_field('latitude', latitude)
     
     # extract grids
-    refl_grid = grid.fields[fnames['dbzh_corr']]['data']
+    refl_grid = grid.fields[ref_name]['data']
     grid_sz   = np.shape(refl_grid)
     alt_vec   = grid.z['data']
     alt_grid  = np.tile(alt_vec,(grid_sz[1], grid_sz[2], 1))

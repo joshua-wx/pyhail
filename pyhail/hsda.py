@@ -12,7 +12,7 @@ import numpy as np
 import netCDF4
 import pyart
 
-def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
+def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi_name, snr_name, cbb_name, hca_name):
 
     """
     Wrapper function for HSDA processing
@@ -21,14 +21,14 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
     ===========
     radar: struct
         Py-ART radar object.
-    fieldnames: dict
-        map to pyart field names
     snd_input: string
         sounding full filename (inc path)
     hca_hail_idx: list
         index of hail related fields in classification to apply HSDA
     dzdr:
         offset for differential reflectivity
+    ####_name: string
+        field name from radar object
 
     Returns:
     ========
@@ -52,13 +52,13 @@ def main(radar,snd_input,fieldnames,hca_hail_idx,dzdr):
     const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx}
 
     #load data
-    zh_cf  = radar.fields[fieldnames['dbzh_corr']]['data']
-    zdr_cf = radar.fields[fieldnames['zdr_corr']]['data']
-    rhv_cf = radar.fields[fieldnames['rhv_corr']]['data']
-    phi_cf = radar.fields[fieldnames['phi_bringi']]['data']
-    snr_cf = radar.fields[fieldnames['snr']]['data']
-    cbb_cf = radar.fields[fieldnames['cbb']]['data']
-    hca    = radar.fields[fieldnames['hca']]['data']
+    zh_cf  = radar.fields[ref_name]['data']
+    zdr_cf = radar.fields[zdr_name]['data']
+    rhv_cf = radar.fields[rhv_name]['data']
+    phi_cf = radar.fields[phi_name]['data']
+    snr_cf = radar.fields[snr_name]['data']
+    cbb_cf = radar.fields[cbb_name]['data']
+    hca    = radar.fields[hca_name]['data']
 
     #smooth radar data
     zh_cf_smooth  = common.smooth_ppi_rays(zh_cf,5)

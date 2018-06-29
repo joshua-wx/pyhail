@@ -10,7 +10,7 @@ Joshua Soderholm - 15 June 2018
 
 import pyart
 
-def main(radar,fieldnames):
+def main(radar, ref_name, zdr_name):
     """
     Hail Differential Reflectity Retrieval
     Required DBZH and ZDR fields
@@ -19,8 +19,10 @@ def main(radar,fieldnames):
     ===========
     radar: struct
         pyart radar object
-    fieldnames: dict
-        map pyart fieldnames
+    ref_name: string
+        name of reflecitivty field
+    zdr_name: string
+        name of zdr field
 
     Returns:
     ========
@@ -28,8 +30,8 @@ def main(radar,fieldnames):
         ndarray containing hail differential reflectivity (mm)
     """
     #extract fields
-    dbz = radar.fields[fieldnames['dbzh_corr']]['data']
-    zdr = radar.fields[fieldnames['zdr_corr']]['data']
+    dbz = radar.fields[ref_name]['data']
+    zdr = radar.fields[zdr_name]['data']
 
     #calculate hdr
     #apply primary function

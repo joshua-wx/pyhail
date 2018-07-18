@@ -43,7 +43,7 @@ def _get_latlon(radgrid, ref_name):
 
     return longitude, latitude
 
-def main(grid, fnames, out_ffn, snd_input, ref_name):
+def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -61,7 +61,8 @@ def main(grid, fnames, out_ffn, snd_input, ref_name):
 		sounding full filename (inc path)
     ref_name: string
         name of reflectivity field in radar object
-
+    save_flag: logical
+        if True, then save grid to file
     Returns:
     ========
     None, write to file
@@ -147,4 +148,9 @@ def main(grid, fnames, out_ffn, snd_input, ref_name):
     grid.add_field(fnames['posh'], POSH_field, replace_existing=True) 
     
     # Saving data to file
-    grid.write(out_ffn)
+    if save_flag:
+        grid.write(out_ffn)
+        
+    #return dictionary
+    out_dict = {'hail_KE':hail_KE_field, 'SHI':SHI_field, 'MESH':MESH_field, 'POSH':POSH_field}
+    return out_dict

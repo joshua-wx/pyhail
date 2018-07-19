@@ -80,8 +80,8 @@ def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
     snd_rh   = snd_data.variables["rh"][:]
     
     #run interpolation
-    snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20)/1000
-    snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)/1000
+    snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20) #m
+    snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)  #m
 
     # Latitude Longitude field for each point.
     longitude, latitude = _get_latlon(grid, ref_name)
@@ -93,7 +93,7 @@ def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
     grid_sz   = np.shape(refl_grid)
     alt_vec   = grid.z['data']
     alt_grid  = np.tile(alt_vec,(grid_sz[1], grid_sz[2], 1))
-    alt_grid  = np.swapaxes(alt_grid, 0, 2)
+    alt_grid  = np.swapaxes(alt_grid, 0, 2) #m
     
     #calc reflectivity weighting function
     weight_ref                             = (refl_grid - z_lower_bound)/(z_upper_bound - z_lower_bound)

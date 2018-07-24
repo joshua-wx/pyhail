@@ -158,5 +158,5 @@ def main(grid, fnames, out_ffn, snd_input, temph_data, ref_name, save_flag):
         grid.write(out_ffn)
         
     #return dictionary
-    out_dict = {'hail_KE':hail_KE_field, 'SHI':SHI_field, 'MESH':MESH_field, 'POSH':POSH_field}
-    return out_dict
+    #out_dict = {'hail_KE':hail_KE_field, 'SHI':SHI_field, 'MESH':MESH_field, 'POSH':POSH_field}
+    return grid

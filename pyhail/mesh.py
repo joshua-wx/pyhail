@@ -43,7 +43,7 @@ def _get_latlon(radgrid, ref_name):
 
     return longitude, latitude
 
-def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
+def main(grid, fnames, out_ffn, snd_input, temph_data, ref_name, save_flag):
 
     """
  	Hail grids adapted fromWitt et al. 1998 and Cintineo et al. 2012.
@@ -59,6 +59,8 @@ def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
 		output full filename (inc path)
 	snd_input: string
 		sounding full filename (inc path)
+	temph_data: list
+		contains 0C and -20C altitude (m) in first and second element position, only used if snd_input is empty
     ref_name: string
         name of reflectivity field in radar object
     save_flag: logical
@@ -73,16 +75,20 @@ def main(grid, fnames, out_ffn, snd_input, ref_name, save_flag):
     z_lower_bound = 40
     z_upper_bound = 50
     
-    #build sounding data
-    snd_data = netCDF4.Dataset(snd_input)
-    snd_temp = snd_data.variables["temp"][:]
-    snd_geop = snd_data.variables["height"][:]
-    snd_rh   = snd_data.variables["rh"][:]
-    
-    #run interpolation
-    snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20) #m
-    snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)  #m
+    if len(snd_input) > 0:
+        #build sounding data
+        snd_data = netCDF4.Dataset(snd_input)
+        snd_temp = snd_data.variables["temp"][:]
+        snd_geop = snd_data.variables["height"][:]
+        snd_rh   = snd_data.variables["rh"][:]
 
+        #run interpolation
+        snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)  #m
+        snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20) #m
+    else:
+        snd_t_0C       = temph_data[0]
+        snd_t_minus20C = temph_data[1]
+        
     # Latitude Longitude field for each point.
     longitude, latitude = _get_latlon(grid, ref_name)
     grid.add_field('longitude', longitude)

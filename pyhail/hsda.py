@@ -42,6 +42,7 @@ def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi
     snd_temp = snd_data.variables["temp"][:]
     snd_geop = snd_data.variables["height"][:]
     snd_rh   = snd_data.variables["rh"][:]
+    snd_data.close()
     #calc wbt
     snd_wbt  = common.wbt(snd_temp,snd_rh)
     #run interpolation

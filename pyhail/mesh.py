@@ -81,7 +81,7 @@ def main(grid, fnames, out_ffn, snd_input, temph_data, ref_name, save_flag):
         snd_temp = snd_data.variables["temp"][:]
         snd_geop = snd_data.variables["height"][:]
         snd_rh   = snd_data.variables["rh"][:]
-
+        snd_data.close()
         #run interpolation
         snd_t_0C       = common.sounding_interp(snd_temp,snd_geop,0)  #m
         snd_t_minus20C = common.sounding_interp(snd_temp,snd_geop,-20) #m

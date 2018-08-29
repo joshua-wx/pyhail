@@ -37,9 +37,8 @@ To install in your home directory, use:
 - Correction of ZDR from noise using cpol_processing (Schuur et al. 2003 NOAA report (p7 eq 6))
 
 ### Use
-- [Pipeline Notebook](https://github.com/joshua-wx/PyHail/blob/master/inspection_plot.ipynb): applies dual pol processing (filtering, attenuation corrections)
+- [Inspection Plot Notebook](https://github.com/joshua-wx/PyHail/blob/master/notebooks/inspection_plot.ipynb): applies dual pol processing (filtering, attenuation corrections)
 and hail retrievals to various radar formats (cfradial, odimh5, mdv). Note that radiosonde data must be supplied in netcdf format.
-- [Pipeline Multiproc Notebook](https://github.com/joshua-wx/PyHail/blob/master/notebooks/pipeline_multiproc.ipynb): Multiprocessing version of pipeline
-- [Inspection Plot Notebook](https://github.com/joshua-wx/PyHail/blob/master/pipeline.ipynb): plots dual pol fields and all hail retrievals
+- [Pipeline Notebook](https://github.com/joshua-wx/PyHail/blob/master/notebooks/pipeline.ipynb): plots dual pol fields and all hail retrievals
 
 

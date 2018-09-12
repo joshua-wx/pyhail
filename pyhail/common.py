@@ -122,8 +122,11 @@ def beam_blocking(radar, srtm_ffn):
     nbins      = int(radar.ngates)
     el_list    = radar.fixed_angle['data']
     range_res  = radar.range['meters_between_gates']
-    bw         = radar.instrument_parameters['radar_beam_width_h']['data'][0]
-
+    try:
+        bw = radar.instrument_parameters['radar_beam_width_h']['data'][0]
+    except:
+        print('beamwidth info missing form volume, using default of 1deg')
+        bw = 1
     #grid arrays
     r = np.arange(nbins) * range_res
     beamradius = wrl.util.half_power_radius(r, bw)

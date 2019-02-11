@@ -121,8 +121,8 @@ def main(grid, fnames, out_ffn, snd_input, temph_data, ref_name, save_flag):
     #calc maximum estimated severe hail (mm)
     MESH = 2.54 * SHI**0.5
 
-    #calc warning threshold (J/m/s) NOTE: freezing height must be in meters
-    WT   = 57.5 * snd_t_0C - 121
+    #calc warning threshold (J/m/s) NOTE: freezing height must be in km
+    WT   = 57.5 * (snd_t_0C/1000) - 121
 
     #calc probability of severe hail (POSH) (%)
     POSH           = 29 * np.log(SHI/WT) + 50

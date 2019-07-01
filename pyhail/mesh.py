@@ -159,10 +159,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     weight_height[alt_grid >= snd_t_minus20C] = 1
 
     # calc severe hail index
-    if len(alt_vec) == 1:
-        grid_sz_m = alt_vec
-    else:
-        grid_sz_m = alt_vec[1] - alt_vec[0]
+    grid_sz_m = alt_vec[1] - alt_vec[0]
     SHI = 0.1 * np.sum(weight_height * hail_KE, axis=0) * grid_sz_m
 
     # calc maximum estimated severe hail (mm)

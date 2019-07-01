@@ -14,13 +14,13 @@ import pyart
 
 from pyhail import common
 
-def _get_latlon(radgrid, ref_name):
+def _get_latlon(grid, ref_name):
     """
     Generates latitude and longitude arrays.
 
     Parameters
     ----------
-    radgrid : Grid
+    grid : Grid
         Py-ART grid object.
     ref_name : str
         Reflectivity field name.
@@ -36,11 +36,11 @@ def _get_latlon(radgrid, ref_name):
 
     """
     # Declare array, filled 0 in order to not have a masked array.
-    lontot = np.zeros_like(radgrid.fields[ref_name]['data'].filled(0))
-    lattot = np.zeros_like(radgrid.fields[ref_name]['data'].filled(0))
+    lontot = np.zeros_like(grid.fields[ref_name]['data'].filled(0))
+    lattot = np.zeros_like(grid.fields[ref_name]['data'].filled(0))
 
-    for lvl in range(radgrid.nz):
-        lontot[lvl, :, :], lattot[lvl, :, :] = radgrid.get_point_longitude_latitude(lvl)
+    for lvl in range(grid.nz):
+        lontot[lvl, :, :], lattot[lvl, :, :] = grid.get_point_longitude_latitude(lvl)
 
     longitude = pyart.config.get_metadata('longitude')
     latitude = pyart.config.get_metadata('latitude')
@@ -63,7 +63,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
 
     Parameters
     ----------
-    radgrid : Grid
+    grid : Grid
         Py-ART grid object.
     ref_name : str
         Name of reflectivity field in the radar object.
@@ -135,8 +135,8 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
 
     # Latitude Longitude field for each point.
     longitude, latitude = _get_latlon(grid, ref_name)
-    grid.add_field('longitude', longitude)
-    grid.add_field('latitude', latitude)
+    grid.add_field('longitude', longitude, replace_existing=True)
+    grid.add_field('latitude', latitude, replace_existing=True)
 
     # extract grids
     refl_grid = grid.fields[ref_name]['data']
@@ -159,7 +159,10 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     weight_height[alt_grid >= snd_t_minus20C] = 1
 
     # calc severe hail index
-    grid_sz_m = alt_vec[1] - alt_vec[0]
+    if len(alt_vec) == 1:
+        grid_sz_m = alt_vec
+    else:
+        grid_sz_m = alt_vec[1] - alt_vec[0]
     SHI = 0.1 * np.sum(weight_height * hail_KE, axis=0) * grid_sz_m
 
     # calc maximum estimated severe hail (mm)

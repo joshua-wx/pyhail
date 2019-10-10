@@ -10,9 +10,8 @@ Joshua Soderholm - 15 June 2018
 from pyhail import common, hsda_mf
 import numpy as np
 import netCDF4
-import pyart
 
-def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi_name, snr_name, cbb_name, hca_name):
+def main(radar_dict, snd_dict, hca_hail_idx, dzdr):
 
     """
     Wrapper function for HSDA processing
@@ -37,12 +36,10 @@ def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi
 
     """
 
-    #build sounding data
-    snd_data = netCDF4.Dataset(snd_input)
-    snd_temp = snd_data.variables["temp"][:]
-    snd_geop = snd_data.variables["height"][:]
-    snd_rh   = snd_data.variables["rh"][:]
-    snd_data.close()
+    #load sounding data
+    snd_temp = snd_dict["temp"]
+    snd_geop = snd_dict["height"]
+    snd_rh   = snd_dict["rh"]
     #calc wbt
     snd_wbt  = common.wbt(snd_temp,snd_rh)
     #run interpolation
@@ -53,7 +50,7 @@ def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi
     const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx}
 
     #load data
-    zh_cf  = radar.fields[ref_name]['data']
+    zh_cf  = snd_dict["temp"]
     zdr_cf = radar.fields[zdr_name]['data']
     rhv_cf = radar.fields[rhv_name]['data']
     phi_cf = radar.fields[phi_name]['data']
@@ -75,7 +72,7 @@ def main(radar, snd_input, hca_hail_idx, dzdr, ref_name, zdr_name, rhv_name, phi
     #calc pixel alt
     rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     rg, eleg  = np.meshgrid(radar.range['data'], radar.elevation['data'])
-    _, _, alt = pyart.core.antenna_to_cartesian(rg / 1000.0, azg, eleg)  
+    _, _, alt = common.antenna_to_cartesian(rg / 1000.0, azg, eleg)  
     
     #find all pixels in hca which match the hail classes
     #for each pixel, apply transform

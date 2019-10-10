@@ -8,9 +8,9 @@ Contains HDF method
 Joshua Soderholm - 15 June 2018
 """
 
-import pyart
 
-def main(radar, ref_name, zdr_name):
+
+def main(radar_dict):
     """
     Hail Differential Reflectity Retrieval
     Required DBZH and ZDR fields
@@ -30,8 +30,8 @@ def main(radar, ref_name, zdr_name):
         ndarray containing hail differential reflectivity (mm)
     """
     #extract fields
-    dbz = radar.fields[ref_name]['data']
-    zdr = radar.fields[zdr_name]['data']
+    dbz = radar_dict['dbz']
+    zdr = radar_dict['zdr']
 
     #calculate hdr
     #apply primary function

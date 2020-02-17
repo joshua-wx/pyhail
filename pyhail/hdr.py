@@ -42,10 +42,17 @@ def main(radar_dict):
     #apply to zhh
     hdr = dbz - zdr_fun
 
+    #use polynomial from Depue et al. 2009 to transform dB into mm
+    hdr_size = 0.0284*hdr**2-0.366*dhr+11.69
+    
     #generate meta
-    the_comments = "Applies the transform from hdr to mm used by Depue et al. 2009"
+    the_comments = "Applies Aydin and Zhao 1990"
     hdr_meta     = {'data': hdr, 'units': 'dB', 'long_name': 'Hail Differential Reflectivity',
+                  'standard_name': 'HDR', 'comments': the_comments}
+
+    the_comments = "Applies the transform from hdr to mm used by Depue et al. 2009"
+    hdr_size_meta = {'data': hdr_size, 'units': 'mm', 'long_name': 'HDR hail size estimate',
                   'standard_name': 'HDR', 'comments': the_comments}
     
     #return hdr data 
-    return hdr_meta
+    return hdr_meta, hdr_size_meta

@@ -53,10 +53,10 @@ def _get_latlon(grid, ref_name):
 def main(grid, ref_name, snd_input=None, sonde_temp='temp',
          sonde_height='height', out_ffn=None,
          temph_data=None, posh_field=None, mesh_field=None,
-         hail_ke_field=None, shi_field=None, save_flag=False):
+         hail_ke_field=None, shi_field=None, save_flag=False, mesh_method='hm2019_95'):
 
     """
-    Hail grids adapted from Witt et al. 1998 and Cintineo et al. 2012.
+    Hail grids adapted from Witt et al. 1998,  Cintineo et al. 2012. and Murillo and Homeyer 2019
     Expanded to grids (adapted from wdss-ii)
 
     Gridding set to 1x1x1km on a 20,145x145km domain
@@ -85,6 +85,8 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
         Default is 'MESH', 'POSH', 'HAIL_KE', 'SHI'.
     save_flag : bool
         If True, then saves grid to file.
+    mesh_method : string
+        either witt1998, mh2019_75 or mh2019_95. see more information below
 
     Returns
     -------
@@ -163,8 +165,18 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     SHI = 0.1 * np.sum(weight_height * hail_KE, axis=0) * grid_sz_m
 
     # calc maximum estimated severe hail (mm)
-    MESH = 2.54 * SHI**0.5
-
+    if mesh_method == 'witt1998': #75th percentil fit from witt et al. 1998 (fitted to 147 reports)
+        MESH = 2.54 * SHI**0.5
+        mesh_comment = '75th percentil fit from witt et al. 1998 (fitted to 147 reports)'
+    elif mesh_method == 'mh2019_75': #75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
+        MESH = 16.566 * SHI**0.181
+        mesh_comment = '75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
+    elif mesh_method == 'mh2019_95': #95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
+        MESH = 17.270 * SHI**0.272
+        mesh_comment = '95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
+    else:
+        raise ValueError('unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95')
+        
     # calc warning threshold (J/m/s) NOTE: freezing height must be in km
     WT = 57.5 * (snd_t_0C/1000) - 121
 
@@ -195,7 +207,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     MESH_dict = {'data': MESH_grid, 'units': 'mm',
                  'long_name': 'Maximum Expected Size of Hail',
                  'standard_name': 'MESH',
-                 'comments': 'Witt et al. 1998, only valid in the first level'}
+                 'comments': mesh_comment}
     grid.add_field(mesh_field, MESH_dict, replace_existing=True)
 
     POSH_grid = np.zeros_like(hail_KE)
@@ -216,6 +228,5 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
         else:
             grid.write(out_ffn)
 
-    #return dictionary
-    #out_dict = {'hail_KE':hail_KE_field, 'SHI':SHI_field, 'MESH':MESH_field, 'POSH':POSH_field}
+    #return grid object
     return grid

@@ -53,7 +53,7 @@ def _get_latlon(grid, ref_name):
 def main(grid, ref_name, snd_input=None, sonde_temp='temp',
          sonde_height='height', out_ffn=None,
          temph_data=None, posh_field=None, mesh_field=None,
-         hail_ke_field=None, shi_field=None, save_flag=False, mesh_method='hm2019_95'):
+         hail_ke_field=None, shi_field=None, save_flag=False, mesh_method='mh2019_95'):
 
     """
     Hail grids adapted from Witt et al. 1998,  Cintineo et al. 2012. and Murillo and Homeyer 2019

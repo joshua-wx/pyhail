@@ -11,7 +11,15 @@ from pyhail import common, hsda_mf
 import numpy as np
 import netCDF4
 
-def main(radar_dict, snd_dict, hca_hail_idx, dzdr):
+def main(radar, snd_dict, hca_hail_idx,
+        dzdr=0,
+        zh_name='corrected_reflectivity',
+        zdr_name='corrected_differential_reflectivity',
+        rhv_name='cross_correlation_ratio',
+        phi_name='corrected_differential_phase',
+        snr_name='signal_to_noise_ratio',
+        cbb_name='cbb',
+        hca_name='radar_echo_classification'):
 
     """
     Wrapper function for HSDA processing
@@ -37,9 +45,9 @@ def main(radar_dict, snd_dict, hca_hail_idx, dzdr):
     """
 
     #load sounding data
-    snd_temp = snd_dict["temp"]
-    snd_geop = snd_dict["height"]
-    snd_rh   = snd_dict["rh"]
+    snd_temp = snd_dict["t"]
+    snd_geop = snd_dict["z"]
+    snd_rh   = snd_dict["r"]
     #calc wbt
     snd_wbt  = common.wbt(snd_temp,snd_rh)
     #run interpolation
@@ -50,7 +58,7 @@ def main(radar_dict, snd_dict, hca_hail_idx, dzdr):
     const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx}
 
     #load data
-    zh_cf  = snd_dict["temp"]
+    zh_cf  = radar.fields[zh_name]['data']
     zdr_cf = radar.fields[zdr_name]['data']
     rhv_cf = radar.fields[rhv_name]['data']
     phi_cf = radar.fields[phi_name]['data']
@@ -78,26 +86,27 @@ def main(radar_dict, snd_dict, hca_hail_idx, dzdr):
     #for each pixel, apply transform
     hail_mask = np.isin(hca, const['hca_hail_idx'])
     hail_idx  = np.where(hail_mask)
-
     #loop through every pixel
     hsda = np.zeros(hca.shape)
-    try:
-        for i in np.nditer(hail_idx):
-            tmp_alt   = alt[i]
-            tmp_zh    = zh_cf_smooth[i]
-            tmp_zdr   = zdr_cf_smooth[i]
-            tmp_rhv   = rhv_cf_smooth[i]
-            tmp_q_zh  = q['zh'][i]
-            tmp_q_zdr = q['zdr'][i]
-            tmp_q_rhv = q['rhv'][i]     
-            tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhv}
-            if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
-                continue
-            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
-            hsda[i]    = pixel_hsda
-    except:
-        print('Error processing HSDA')
-        pass
+#     try:
+    for i in np.nditer(hail_idx):
+        tmp_alt   = alt[i]
+        tmp_zh    = zh_cf_smooth[i]
+        tmp_zdr   = zdr_cf_smooth[i]
+        tmp_rhv   = rhv_cf_smooth[i]
+        tmp_q_zh  = q['zh'][i]
+        tmp_q_zdr = q['zdr'][i]
+        tmp_q_rhv = q['rhv'][i]     
+        tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhv}
+        if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
+            continue
+        if np.ma.is_masked(tmp_q_zh) or np.ma.is_masked(tmp_q_zdr) or np.ma.is_masked(tmp_q_rhv):
+            continue        
+        pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
+        hsda[i]    = pixel_hsda
+#     except Exception as e:
+#         print('Error processing HSDA ', e, 'for index', i)
+#         pass
 
     #generate meta        
     the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
@@ -125,7 +134,7 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
     mf: dict
         hsda memebership functions
     q: dict
-        confidence vecotrs
+        confidence vectors
     w: dict
         field height interval weights
     const: dict
@@ -166,7 +175,6 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
     max_ag = np.max(ag_vec)
     out    = np.where(ag_vec == max_ag)
     out    = out[0][-1] + 1 #last item, using 1,2,3 indexing
-
     #rule 2
     if max_ag < 0.6:
         out = 1

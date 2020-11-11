@@ -43,7 +43,8 @@ def main(radar_dict):
     hdr = dbz - zdr_fun
 
     #use polynomial from Depue et al. 2009 to transform dB into mm
-    hdr_size = 0.0284*hdr**2-0.366*dhr+11.69
+    hdr_size = 0.0284*(hdr**2)-0.366*hdr+11.69
+    hdr_size[hdr<=0] = 0
     
     #generate meta
     the_comments = "Applies Aydin and Zhao 1990"

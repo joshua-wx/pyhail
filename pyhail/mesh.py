@@ -51,9 +51,9 @@ def _get_latlon(grid, ref_name):
     return longitude, latitude
 
 def main(grid, ref_name, snd_input=None, sonde_temp='temp',
-         sonde_height='height', out_ffn=None,
+         sonde_height='height',
          temph_data=None, posh_field=None, mesh_field=None,
-         hail_ke_field=None, shi_field=None, save_flag=False, mesh_method='mh2019_95'):
+         hail_ke_field=None, shi_field=None, mesh_method='mh2019_95'):
 
     """
     Hail grids adapted from Witt et al. 1998,  Cintineo et al. 2012. and Murillo and Homeyer 2019
@@ -67,8 +67,6 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
         Py-ART grid object.
     ref_name : str
         Name of reflectivity field in the radar object.
-    out_ffn : string
-	Output full filename (inc path). Default saves to home directory.
     snd_input : string
     	Sounding full filename (inc path). Default is None. If default
         will see if temph_data is provided.
@@ -82,9 +80,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
         parameter.
     posh_field, mesh_field, hail_ke_field, shi_field : str
         String to name new hail field that will be added to the grid object.
-        Default is 'MESH', 'POSH', 'HAIL_KE', 'SHI'.
-    save_flag : bool
-        If True, then saves grid to file.
+        Default is 'mesh', 'posh', 'hail_ke', 'shi'.
     mesh_method : string
         either witt1998, mh2019_75 or mh2019_95. see more information below
 
@@ -98,13 +94,13 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     z_upper_bound = 50
 
     if mesh_field is None:
-        mesh_field = 'MESH'
+        mesh_field = 'mesh'
     if posh_field is None:
-        posh_field = 'POSH'
+        posh_field = 'posh'
     if hail_ke_field is None:
-        hail_ke_field = 'HAIL_KE'
+        hail_ke_field = 'hail_ke'
     if shi_field is None:
-        shi_field = 'SHI'
+        shi_field = 'shi'
 
     if (snd_input is None) and (temph_data is None):
         raise ValueError(
@@ -170,7 +166,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
         mesh_comment = '75th percentil fit from witt et al. 1998 (fitted to 147 reports)'
     elif mesh_method == 'mh2019_75': #75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 16.566 * SHI**0.181
-        mesh_comment = '75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
+        mesh_comment = '95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
     elif mesh_method == 'mh2019_95': #95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 17.270 * SHI**0.272
         mesh_comment = '95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
@@ -217,16 +213,6 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
                  'standard_name': 'POSH',
                  'comments': 'Witt et al. 1998, only valid in the first level'}
     grid.add_field(posh_field, POSH_dict, replace_existing=True)
-
-    # Saving data to file
-    if save_flag:
-        if out_ffn is None:
-            # If user wants to save file, but doesn't provide path,
-            # file is saved to user's home directory.
-            path = os.path.expanduser('~')
-            grid.write(path + '/hail_grid.nc')
-        else:
-            grid.write(out_ffn)
 
     #return grid object
     return grid

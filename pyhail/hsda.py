@@ -75,7 +75,7 @@ def main(radar, snd_dict, hca_hail_idx,
     w, mf   = hsda_mf.build_mf()
     
     #generate quality vector
-    q = hsda_q(zh_cf_smooth, phi_cf, rhv_cf_smooth, phi_cf, cbb_cf, cbb_threshold=0.5)
+    q = hsda_q(zh_cf_smooth, phi_cf, rhv_cf_smooth, snr_cf, cbb_cf, cbb_threshold=0.5)
     
     #calc pixel alt
     rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
@@ -320,6 +320,10 @@ def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
         rhv: array
             correlation coefficent quality array
     """
+    
+    #fill missing phidp values with 0
+    phi = phi.filled(0)
+    
     #parameters
     Ac = phi / 600
     Bc = 1.0 / ( 10 ** (0.1 * snr))

@@ -94,7 +94,7 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     z_upper_bound = 50
 
     if mesh_field is None:
-        mesh_field = 'mesh'
+        mesh_field = 'mesh_' + mesh_method
     if posh_field is None:
         posh_field = 'posh'
     if hail_ke_field is None:
@@ -201,8 +201,8 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     MESH_grid = np.zeros_like(hail_KE)
     MESH_grid[0, :, :] = MESH
     MESH_dict = {'data': MESH_grid, 'units': 'mm',
-                 'long_name': 'Maximum Expected Size of Hail',
-                 'standard_name': 'MESH',
+                 'long_name': 'Maximum Expected Size of Hail using ' + mesh_method,
+                 'standard_name': 'MESH ' + mesh_method,
                  'comments': mesh_comment}
     grid.add_field(mesh_field, MESH_dict, replace_existing=True)
 

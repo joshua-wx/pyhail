@@ -88,25 +88,24 @@ def main(radar, snd_dict, hca_hail_idx,
     hail_idx  = np.where(hail_mask)
     #loop through every pixel
     hsda = np.zeros(hca.shape)
-#     try:
-    for i in np.nditer(hail_idx):
-        tmp_alt   = alt[i]
-        tmp_zh    = zh_cf_smooth[i]
-        tmp_zdr   = zdr_cf_smooth[i]
-        tmp_rhv   = rhv_cf_smooth[i]
-        tmp_q_zh  = q['zh'][i]
-        tmp_q_zdr = q['zdr'][i]
-        tmp_q_rhv = q['rhv'][i]     
-        tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhv}
-        if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
-            continue
-        if np.ma.is_masked(tmp_q_zh) or np.ma.is_masked(tmp_q_zdr) or np.ma.is_masked(tmp_q_rhv):
-            continue        
-        pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
-        hsda[i]    = pixel_hsda
-#     except Exception as e:
-#         print('Error processing HSDA ', e, 'for index', i)
-#         pass
+    #check for valid hail pixels
+    if len(hail_idx)>0:
+        #loop through every hail pixel
+        for i in np.nditer(hail_idx):
+            tmp_alt   = alt[i]
+            tmp_zh    = zh_cf_smooth[i]
+            tmp_zdr   = zdr_cf_smooth[i]
+            tmp_rhv   = rhv_cf_smooth[i]
+            tmp_q_zh  = q['zh'][i]
+            tmp_q_zdr = q['zdr'][i]
+            tmp_q_rhv = q['rhv'][i]     
+            tmp_q     = {'zh':tmp_q_zh, 'zdr':tmp_q_zdr, 'rhv':tmp_q_rhv}
+            if np.ma.is_masked(tmp_zh) or np.ma.is_masked(tmp_zdr) or np.ma.is_masked(tmp_rhv):
+                continue
+            if np.ma.is_masked(tmp_q_zh) or np.ma.is_masked(tmp_q_zdr) or np.ma.is_masked(tmp_q_rhv):
+                continue        
+            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
+            hsda[i]    = pixel_hsda
 
     #generate meta        
     the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"

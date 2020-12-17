@@ -163,13 +163,13 @@ def main(grid, ref_name, snd_input=None, sonde_temp='temp',
     # calc maximum estimated severe hail (mm)
     if mesh_method == 'witt1998': #75th percentil fit from witt et al. 1998 (fitted to 147 reports)
         MESH = 2.54 * SHI**0.5
-        mesh_comment = '75th percentil fit from witt et al. 1998 (fitted to 147 reports)'
+        mesh_comment = '75th percentil fit from Witt et al. 1998 (fitted to 147 reports)'
     elif mesh_method == 'mh2019_75': #75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 16.566 * SHI**0.181
-        mesh_comment = '95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
+        mesh_comment = '75th percentile fit from Murillo and Homeyer 2019 (fitted to 5897 reports)'
     elif mesh_method == 'mh2019_95': #95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 17.270 * SHI**0.272
-        mesh_comment = '95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)'
+        mesh_comment = '95th percentile fit from Murillo and Homeyer 2019 (fitted to 5897 reports)'
     else:
         raise ValueError('unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95')
         

@@ -89,7 +89,7 @@ def main(radar, snd_dict, hca_hail_idx,
     #loop through every pixel
     hsda = np.zeros(hca.shape)
     #check for valid hail pixels
-    if len(hail_idx)>0:
+    try:
         #loop through every hail pixel
         for i in np.nditer(hail_idx):
             tmp_alt   = alt[i]
@@ -106,6 +106,9 @@ def main(radar, snd_dict, hca_hail_idx,
                 continue        
             pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
             hsda[i]    = pixel_hsda
+    except Exception as e:
+        print('error in HSDA: ', e)
+        
 
     #generate meta        
     the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"

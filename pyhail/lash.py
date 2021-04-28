@@ -40,7 +40,15 @@ hail_v = 488*(hail_sz**0.84)*pc #from Heymsfield and Wright (2014) but discussed
 hAcc = (1/epsilon)*(1/eta*rho_h)* sum_of(iwc_h*hail_v*delta_t) #Kalina et al. (2016)
 
 
+"""
+Suggestions from Kumjian et al. 2019
+Z_H > 65-70dBZ
+K_DP > 10deg/km
 
+Could use reflectivity threshold instead of HCA as a primative single pol tool
+
+
+"""
 
 
 """
@@ -51,6 +59,8 @@ Heymsfield, A. J., & Miller, K. M. (1988). Water Vapor and ice Mass Transported 
 Heymsfield, A., & Wright, R. (2014). Graupel and Hail Terminal Velocities: Does a “Supercritical” Reynolds Number Apply?, Journal of the Atmospheric Sciences, 71(9), 3392-3403. Retrieved Apr 28, 2021, from https://journals.ametsoc.org/view/journals/atsc/71/9/jas-d-14-0034.1.xml
 
 Kalina, E. A., Friedrich, K., Motta, B. C., Deierling, W., Stano, G. T., & Rydell, N. N. (2016). Colorado Plowable Hailstorms: Synoptic Weather, Radar, and Lightning Characteristics, Weather and Forecasting, 31(2), 663-693. Retrieved Apr 28, 2021, from https://journals.ametsoc.org/view/journals/wefo/31/2/waf-d-15-0037_1.xml
+
+Kumjian, M. R., Lebo, Z. J., & Ward, A. M. (2019). Storms Producing Large Accumulations of Small Hail, Journal of Applied Meteorology and Climatology, 58(2), 341-364. Retrieved Apr 28, 2021, from https://journals.ametsoc.org/view/journals/apme/58/2/jamc-d-18-0073.1.xml
 
 Scott, G. D., and D. M. Kilgour, 1969: The density of random close packing of spheres. J. Phys. D, 2, 863–866, https://doi.org/10.1088/0022-3727/2/6/311.
 

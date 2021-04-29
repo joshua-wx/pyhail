@@ -1,107 +1,41 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""A setuptools based setup module.
+See:
+https://packaging.python.org/en/latest/distributing.html
+https://github.com/pypa/sampleproject
+"""
 
-import io
-import os
-import sys
-from shutil import rmtree
+# Always prefer setuptools over distutils
+from setuptools import setup, find_packages
+from os import path
+from io import open
 
-from setuptools import find_packages, setup, Command
+here = path.abspath(path.dirname(__file__))
 
-# Package meta-data.
-NAME = 'pyhail'
-DESCRIPTION = 'Python Hail Weather Radar Retrievals '
-URL = 'https://github.com/joshuass/PyHail'
-EMAIL = 'joshua.soderholm@monash.edu'
-AUTHOR = 'Joshua Soderholm'
+# Get the long description from the README file
+with open(path.join(here, "README.md"), encoding="utf-8") as f:
+    long_description = f.read()
 
-# What packages are required for this module to be executed?
-REQUIRED = [
-    "arm_pyart", "numpy", "netCDF4", "wradlib"
-]
-
-# The rest you shouldn't have to touch too much :)
-# ------------------------------------------------
-# Except, perhaps the License and Trove Classifiers!
-# If you do change the License, remember to change the Trove Classifier for that!
-
-here = os.path.abspath(os.path.dirname(__file__))
-
-# Import the README and use it as the long-description.
-# Note: this will only work if 'README.rst' is present in your MANIFEST.in file!
-with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = '\n' + f.read()
-
-# Load the package's __version__.py module as a dictionary.
-about = {}
-with open(os.path.join(here, NAME, '__version__.py')) as f:
-    exec(f.read(), about)
-
-
-class PublishCommand(Command):
-    """Support setup.py publish."""
-
-    description = 'Build and publish the package.'
-    user_options = []
-
-    @staticmethod
-    def status(s):
-        """Prints things in bold."""
-        print('\033[1m{0}\033[0m'.format(s))
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        try:
-            self.status('Removing previous builds…')
-            rmtree(os.path.join(here, 'dist'))
-        except FileNotFoundError:
-            pass
-
-        self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
-
-        self.status('Uploading the package to PyPi via Twine…')
-        os.system('twine upload dist/*')
-
-        sys.exit()
-
-
-# Where the magic happens:
 setup(
-    name=NAME,
-    version=about['__version__'],
-    description=DESCRIPTION,
+    name="pyhail",
+    version="1.0.0",
+    description="Python Hail Weather Radar Retrievals",
     long_description=long_description,
-    author=AUTHOR,
-    author_email=EMAIL,
-    url=URL,
-    packages=find_packages(exclude=('tests',)),
-    # If your package is a single module, use this instead of 'packages':
-    # py_modules=['mypackage'],
-
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
-    install_requires=REQUIRED,
-    include_package_data=True,
-    license='ISC',
-    classifiers=[
-        # Trove classifiers
-        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+    long_description_content_type="text/markdown",
+    url="https://github.com/joshuass/PyHail",
+    author="Joshua Soderholm",
+    author_email="joshua.soderholm@bom.gov.au",  # Optional
+    # For a list of valid classifiers, see https://pypi.org/classifiers/
+    classifiers=[  # Optional
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Atmospheric Science",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
-    # $ setup.py publish support.
-    cmdclass={
-        'publish': PublishCommand,
-    },
+    keywords="radar weather meteorology calibration",
+    packages=find_packages(exclude=["contrib", "docs", "tests", "notebooks"]),
+    install_requires=["arm_pyart", "numpy", "netCDF4"],
+    project_urls={"Source": "https://github.com/joshuass/PyHail/",},
 )
-
-from setuptools import setup

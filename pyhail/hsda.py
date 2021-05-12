@@ -324,7 +324,8 @@ def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
     """
     
     #fill missing phidp values with 0
-    phi = phi.filled(0)
+    if np.ma.isMaskedArray(phi):
+        phi = phi.filled(0)
     
     #parameters
     Ac = phi / 600

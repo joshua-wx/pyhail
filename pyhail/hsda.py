@@ -43,7 +43,9 @@ def main(radar, snd_dict, hca_hail_idx,
         hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50
 
     """
-
+    #metadata
+    classes = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
+    
     #load sounding data
     snd_temp = snd_dict["t"]
     snd_geop = snd_dict["z"]
@@ -66,6 +68,14 @@ def main(radar, snd_dict, hca_hail_idx,
     cbb_cf = radar.fields[cbb_name]['data']
     hca    = radar.fields[hca_name]['data']
 
+    #check for any valid data
+    hail_mask = np.isin(hca, hca_hail_idx)
+    hsda = np.zeros(hca.shape)
+    #skip processing if there's no valid hail pixels
+    if not np.any(hail_mask):
+        return {'data': hsda, 'units': ' ', 'long_name': 'Hail Size Discrimination Algorithm',
+                  'standard_name': 'HSDA', 'comments': classes}
+    
     #smooth radar data
     zh_cf_smooth  = common.smooth_ppi_rays(zh_cf,5)
     zdr_cf_smooth = common.smooth_ppi_rays(zdr_cf,5)
@@ -84,10 +94,8 @@ def main(radar, snd_dict, hca_hail_idx,
     
     #find all pixels in hca which match the hail classes
     #for each pixel, apply transform
-    hail_mask = np.isin(hca, const['hca_hail_idx'])
     hail_idx  = np.where(hail_mask)
     #loop through every pixel
-    hsda = np.zeros(hca.shape)
     #check for valid hail pixels
     try:
         #loop through every hail pixel
@@ -111,9 +119,8 @@ def main(radar, snd_dict, hca_hail_idx,
         
 
     #generate meta        
-    the_comments = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
     hsda_meta    = {'data': hsda, 'units': ' ', 'long_name': 'Hail Size Discrimination Algorithm',
-                  'standard_name': 'HSDA', 'comments': the_comments}
+                  'standard_name': 'HSDA', 'comments': classes}
     
     #return radar object
     return hsda_meta

@@ -1,14 +1,14 @@
 """
-Hail Differential Refletivity sub-module of pyhail
+Hail Differential Refletivity (HDR) implementation
+
+This algorthim was developed by:
 Aydin and Zhao 1990, A computational study of polarmetric radar observables in hail. IEEE Trans. Geosci. Remote Sens. 28, 412-422
 Requires reflectivity and differential reflectivity data
-
-Contains HDF method
+Conversion to hail size developed by:
+Depue, T. K., Kennedy, P. C., & Rutledge, S. A. (2007). Performance of the hail differential reflectivity (HDR) polarimetric radar hail indicator. Journal of Applied Meteorology and Climatology, 46(8), 1290–1301. https://doi.org/10.1175/JAM2529.1
 
 Joshua Soderholm - 15 June 2018
 """
-
-
 
 def main(radar_dict):
     """
@@ -17,17 +17,15 @@ def main(radar_dict):
 
     Parameters:
     ===========
-    radar: struct
-        pyart radar object
-    ref_name: string
-        name of reflecitivty field
-    zdr_name: string
-        name of zdr field
-
+    radar_dict: dictionary
+        contains two entries, dbz and zdr, which contain numpy arrays of their respective fields.
     Returns:
     ========
-    hdr:
-        ndarray containing hail differential reflectivity (mm)
+    hdr_meta: dict
+        pyart field dictionary containing HDR dataset
+    hdr_size_meta: dict
+        pyary field dictionary containing HDR size dataset
+    
     """
     #extract fields
     dbz = radar_dict['dbz']

@@ -1,8 +1,6 @@
 """
-HSDA sub-module of pyhail
-
-Contains the dual pol hail size discrimination algorithm
-requires temperature, reflectivity, differential reflectivity and cross correlation
+HSDA implementation (Hail Size Discrimination Algorthim)
+This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 and Ryzhkov et al. 2013 doi:10.1175/JAMC-D-13-074.1
 
 Joshua Soderholm - 15 June 2018
 """
@@ -11,7 +9,7 @@ from pyhail import common, hsda_mf
 import numpy as np
 import netCDF4
 
-def main(radar, snd_dict, hca_hail_idx,
+def main(radar, levels, hca_hail_idx,
         dzdr=0,
         zh_name='corrected_reflectivity',
         zdr_name='corrected_differential_reflectivity',
@@ -28,8 +26,8 @@ def main(radar, snd_dict, hca_hail_idx,
     ===========
     radar: struct
         Py-ART radar object.
-    snd_input: string
-        sounding full filename (inc path)
+    levels : list of length 2
+        height above sea level (m) of the wet bulb freezing level and -25C level (in any order)
     hca_hail_idx: list
         index of hail related fields in classification to apply HSDA
     dzdr:
@@ -46,15 +44,10 @@ def main(radar, snd_dict, hca_hail_idx,
     #metadata
     classes = "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
     
-    #load sounding data
-    snd_temp = snd_dict["t"]
-    snd_geop = snd_dict["z"]
-    snd_rh   = snd_dict["r"]
-    #calc wbt
-    snd_wbt  = common.wbt(snd_temp,snd_rh)
-    #run interpolation
-    wbt_minus25C = common.sounding_interp(snd_wbt,snd_geop,-25)/1000
-    wbt_0C       = common.sounding_interp(snd_wbt,snd_geop,0)/1000
+    # This dummy proofs the user input. The melting level will always 
+    # be lower in elevation than the negative 25 deg C isotherm
+    wbt_minus25C = min(levels)
+    wbt_0C       = max(levels)
 
     #building consts
     const  = {'wbt_minus25C' : wbt_minus25C, 'wbt_0C' : wbt_0C, 'dzdr' : dzdr, 'hca_hail_idx':hca_hail_idx}
@@ -90,13 +83,14 @@ def main(radar, snd_dict, hca_hail_idx,
     #calc pixel alt
     rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
     rg, eleg  = np.meshgrid(radar.range['data'], radar.elevation['data'])
-    _, _, alt = common.antenna_to_cartesian(rg / 1000.0, azg, eleg)  
+    _, _, alt = common.antenna_to_cartesian(rg/1000, azg, eleg)  
     
     #find all pixels in hca which match the hail classes
     #for each pixel, apply transform
     hail_idx  = np.where(hail_mask)
     #loop through every pixel
     #check for valid hail pixels
+
     try:
         #loop through every hail pixel
         for i in np.nditer(hail_idx):
@@ -133,7 +127,7 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
     Parameters:
     ===========
     alt: float
-        altitude of voxel (km)
+        altitude of voxel (m)
     zh: float
         zh value for voxel (dbz)
     zdr: float
@@ -163,11 +157,11 @@ def h_sz(alt,zh,zdr,rhv,mf,q,w,const):
         alt_field = 'a1'
     elif alt >= const['wbt_0C']:
         alt_field = 'a2'
-    elif alt >= (const['wbt_0C'] - 1):
+    elif alt >= (const['wbt_0C'] - 1000):
         alt_field = 'a3'
-    elif alt >= (const['wbt_0C'] - 2):
+    elif alt >= (const['wbt_0C'] - 2000):
         alt_field = 'a4'
-    elif alt >= (const['wbt_0C'] - 3):
+    elif alt >= (const['wbt_0C'] - 3000):
         alt_field = 'a5'
     else:
         alt_field = 'a6'

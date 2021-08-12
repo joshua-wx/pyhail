@@ -55,33 +55,10 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     y = s * np.cos(theta_a)
     return x, y, z
 
-def wbt(temp, rh):
-    """
-    Calculate wet bulb temperature from temperature and relative humidity.
-
-    Parameters
-    ----------
-    temp : ndarray
-        Temperature data (degrees C).
-    rh : ndarray
-        Relative humidity data (%).
-
-    Returns
-    -------
-    wb_temp : ndarray
-        Wet bulb temperature (degrees C).
-
-    """
-    wb_temp = (temp * np.arctan(0.151977*(rh+8.313659)**0.5)
-               + np.arctan(temp+rh) - np.arctan(rh-1.676331)
-               + 0.00391838*(rh**1.5)*np.arctan(0.023101*rh) - 4.686035)
-    return wb_temp
-
 def sounding_interp(snd_temp, snd_height, target_temp):
     """
     Provides an linear interpolated height for a target temperature using a sounding vertical profile. 
     Looks for first instance of temperature below target_temp from surface upward.
-
     Parameters:
     ===========
     snd_temp: ndarray
@@ -90,7 +67,6 @@ def sounding_interp(snd_temp, snd_height, target_temp):
         relative height data (m)
     target_temp: float
         target temperature to find height at (m)
-
     Returns:
     ========
     intp_h: float
@@ -118,6 +94,28 @@ def sounding_interp(snd_temp, snd_height, target_temp):
     intp_h = set_interp(target_temp)
     
     return intp_h
+
+def wbt(temp, rh):
+    """
+    Calculate wet bulb temperature from temperature and relative humidity.
+
+    Parameters
+    ----------
+    temp : ndarray
+        Temperature data (degrees C).
+    rh : ndarray
+        Relative humidity data (%).
+
+    Returns
+    -------
+    wb_temp : ndarray
+        Wet bulb temperature (degrees C).
+
+    """
+    wb_temp = (temp * np.arctan(0.151977*(rh+8.313659)**0.5)
+               + np.arctan(temp+rh) - np.arctan(rh-1.676331)
+               + 0.00391838*(rh**1.5)*np.arctan(0.023101*rh) - 4.686035)
+    return wb_temp
 
 def smooth_ppi_rays(ppi_data, n):
     """

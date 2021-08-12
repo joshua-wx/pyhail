@@ -13,12 +13,12 @@ Joshua Soderholm - 12 August 2021
 import numpy as np
 from pyhail import common
 
-def main(radar, fz_level, pressure,
-        z_fname, hsda_fname, mesh_fname):
-    
+
+def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
+
     """
     Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016
-    
+
     Parameters:
     ===========
     radar : object
@@ -27,70 +27,76 @@ def main(radar, fz_level, pressure,
         wet bulb freezing level (m)
     pressure: float (1,)
         mean pressure between the surface and the height of the 0C wet-bulb temperature
-        
+
     Returns:
         hAcc_meta: dict
         pyart field dictionary containing hAcc dataset
 
     """
-    Z = radar.fields[z_fname]['data']
+    Z = radar.fields[z_fname]["data"]
     if np.ma.is_masked(Z):
         Z = Z.filled(0)
-    hsda = radar.fields[hsda_fname]['data']
+    hsda = radar.fields[hsda_fname]["data"]
     if np.ma.is_masked(hsda):
         hsda = hsda.filled(0)
     mesh = radar.get_field(0, mesh_fname)
     if np.ma.is_masked(mesh):
         mesh = mesh.filled(0)
-        
-    #calculate height
-    rg, azg   = np.meshgrid(radar.range['data'], radar.azimuth['data'])
-    rg, eleg  = np.meshgrid(radar.range['data'], radar.elevation['data'])
-    _, _, heights = common.antenna_to_cartesian(rg/1000, azg, eleg) 
-        
-    n = 0.64 #packing density of monodisperse spheres (Kalina et al. 2016)
-    ph = 900 # density of ice (kg m-3)
-    epsilon = 0.814 
 
-    Ze = 10.**(Z/10.) #convert Z to Ze
-    IWC = (4.4*10**-5)*Ze**(0.71)/1000 #Ice Water Content (kg m-3) derived from Ze follow Heysfield and Miller 1998
-    #remove IWC values where hsda is not hail
-    IWC[hsda <1] = 0
-    #remove IWC values where temperature is at or below 0
+    # calculate height
+    rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
+    rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
+    _, _, heights = common.antenna_to_cartesian(rg / 1000, azg, eleg)
+
+    n = 0.64  # packing density of monodisperse spheres (Kalina et al. 2016)
+    ph = 900  # density of ice (kg m-3)
+    epsilon = 0.814
+
+    Ze = 10.0 ** (Z / 10.0)  # convert Z to Ze
+    IWC = (
+        (4.4 * 10 ** -5) * Ze ** (0.71) / 1000
+    )  # Ice Water Content (kg m-3) derived from Ze follow Heysfield and Miller 1998
+    # remove IWC values where hsda is not hail
+    IWC[hsda < 1] = 0
+    # remove IWC values where temperature is at or below 0
     IWC[heights > fz_level] = 0
-    
-    #get lowest valid IWC
-    #insert sweeps into 3D array (el, az, rg)
-    el_sort_idx = np.argsort(radar.fixed_angle['data'])
+
+    # get lowest valid IWC
+    # insert sweeps into 3D array (el, az, rg)
+    el_sort_idx = np.argsort(radar.fixed_angle["data"])
     az = radar.get_azimuth(0)
-    rg = radar.range['data']
+    rg = radar.range["data"]
     IWC_3d = np.ma.zeros((len(el_sort_idx), len(az), len(rg)))
     for i, el_idx in enumerate(el_sort_idx):
         IWC_3d[i, :, :] = IWC[radar.get_slice(el_idx)]
     # mask zero values
     IWC_3d_masked = np.ma.masked_array(IWC_3d, IWC_3d == 0)
     data_shape = IWC_3d_masked.shape
-    #find the lowest unmasked value by first finding edges
+    # find the lowest unmasked value by first finding edges
     edges = np.ma.notmasked_edges(IWC_3d_masked, axis=0)
-    #use first edge on axis 0 (lowest in height)
+    # use first edge on axis 0 (lowest in height)
     IWC_lowest_valid = np.zeros_like(mesh)
     IWC_lowest_valid[edges[0][1], edges[0][2]] = IWC_3d_masked[edges[0]]
-    
-    #pressure correction from Heysmfield and Write (2014)
-    PC = (1000/pressure)**0.545 
-    #diameter-fall speed relation from Heysmfield and Wright (2014), units of cm/s
-    Vt = 488 * (mesh/10)**0.84 * PC
-    
-    #calculate LASH (units of cm/s)
-    hAcc = (1/epsilon)*(1/(n*ph))*IWC_lowest_valid*Vt
-    hAcc = hAcc*60 #convert cm/s to cm/min
-    
-    #hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
-    hAcc_field = np.zeros_like(radar.fields[z_fname]['data'])
+
+    # pressure correction from Heysmfield and Write (2014)
+    PC = (1000 / pressure) ** 0.545
+    # diameter-fall speed relation from Heysmfield and Wright (2014), units of cm/s
+    Vt = 488 * (mesh / 10) ** 0.84 * PC
+
+    # calculate LASH (units of cm/s)
+    hAcc = (1 / epsilon) * (1 / (n * ph)) * IWC_lowest_valid * Vt
+    hAcc = hAcc * 60  # convert cm/s to cm/min
+
+    # hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
+    hAcc_field = np.zeros_like(radar.fields[z_fname]["data"])
     hAcc_field[radar.get_slice(el_sort_idx[0])] = hAcc
     the_comments = "Hail Accumulation Retrieval developed by Wallace et al. 2019"
-    hAcc_meta = {'data': hAcc_field, 'units': 'cm/min', 'long_name': 'hail accumulation',
-                  'standard_name': 'hAcc', 'comments': the_comments}
-    
-    
+    hAcc_meta = {
+        "data": hAcc_field,
+        "units": "cm/min",
+        "long_name": "hail accumulation",
+        "standard_name": "hAcc",
+        "comments": the_comments,
+    }
+
     return hAcc_meta

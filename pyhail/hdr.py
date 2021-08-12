@@ -10,6 +10,7 @@ Depue, T. K., Kennedy, P. C., & Rutledge, S. A. (2007). Performance of the hail 
 Joshua Soderholm - 15 June 2018
 """
 
+
 def main(radar_dict):
     """
     Hail Differential Reflectity Retrieval
@@ -25,33 +26,43 @@ def main(radar_dict):
         pyart field dictionary containing HDR dataset
     hdr_size_meta: dict
         pyary field dictionary containing HDR size dataset
-    
-    """
-    #extract fields
-    dbz = radar_dict['dbz']
-    zdr = radar_dict['zdr']
 
-    #calculate hdr
-    #apply primary function
+    """
+    # extract fields
+    dbz = radar_dict["dbz"]
+    zdr = radar_dict["zdr"]
+
+    # calculate hdr
+    # apply primary function
     zdr_fun = 19 * zdr + 27
-    #set limits based on zdr
-    zdr_fun[zdr <= 0]   = 27
+    # set limits based on zdr
+    zdr_fun[zdr <= 0] = 27
     zdr_fun[zdr > 1.74] = 60
-    #apply to zhh
+    # apply to zhh
     hdr = dbz - zdr_fun
 
-    #use polynomial from Depue et al. 2009 to transform dB into mm
-    hdr_size = 0.0284*(hdr**2)-0.366*hdr+11.69
-    hdr_size[hdr<=0] = 0
-    
-    #generate meta
+    # use polynomial from Depue et al. 2009 to transform dB into mm
+    hdr_size = 0.0284 * (hdr ** 2) - 0.366 * hdr + 11.69
+    hdr_size[hdr <= 0] = 0
+
+    # generate meta
     the_comments = "Applies Aydin and Zhao 1990"
-    hdr_meta     = {'data': hdr, 'units': 'dB', 'long_name': 'Hail Differential Reflectivity',
-                  'standard_name': 'HDR', 'comments': the_comments}
+    hdr_meta = {
+        "data": hdr,
+        "units": "dB",
+        "long_name": "Hail Differential Reflectivity",
+        "standard_name": "HDR",
+        "comments": the_comments,
+    }
 
     the_comments = "Applies the transform from hdr to mm used by Depue et al. 2009"
-    hdr_size_meta = {'data': hdr_size, 'units': 'mm', 'long_name': 'HDR hail size estimate',
-                  'standard_name': 'HDR', 'comments': the_comments}
-    
-    #return hdr data 
+    hdr_size_meta = {
+        "data": hdr_size,
+        "units": "mm",
+        "long_name": "HDR hail size estimate",
+        "standard_name": "HDR",
+        "comments": the_comments,
+    }
+
+    # return hdr data
     return hdr_meta, hdr_size_meta

@@ -141,23 +141,22 @@ def main(
         mesh_method == "witt1998"
     ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
         MESH = 2.54 * SHI ** 0.5
-        mesh_comment = (
-            "75th percentil fit from Witt et al. 1998 (fitted to 147 reports)"
-        )
+        mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2"
+        mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first level of the 3D grid"
+        
     elif (
         mesh_method == "mh2019_75"
     ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        MESH = 16.566 * SHI ** 0.181
-        mesh_comment = (
-            "75th percentile fit from Murillo and Homeyer 2019 (fitted to 5897 reports)"
-        )
+        MESH = 15.096 * SHI ** 0.206
+        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1"
+        mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid"
+
     elif (
         mesh_method == "mh2019_95"
     ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        MESH = 17.270 * SHI ** 0.272
-        mesh_comment = (
-            "95th percentile fit from Murillo and Homeyer 2019 (fitted to 5897 reports)"
-        )
+        MESH = 22.157 * SHI ** 0.212
+        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1"
+        mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid"
     else:
         raise ValueError(
             "unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95"
@@ -177,8 +176,7 @@ def main(
         "data": E,
         "units": "Jm-2s-1",
         "long_name": "Hail Kinetic Energy",
-        "standard_name": "hail_KE",
-        "comments": "Witt et al. 1998",
+        "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
     }
     grid.add_field(ke_fname, ke_dict, replace_existing=True)
 
@@ -188,8 +186,8 @@ def main(
         "data": SHI_grid,
         "units": "J-1s-1",
         "long_name": "Severe Hail Index",
-        "standard_name": "SHI",
-        "comments": "Witt et al. 1998, only valid in the first level",
+        "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
+        "comments": "only valid in the first level of the 3D grid",
     }
     grid.add_field(shi_fname, SHI_dict, replace_existing=True)
 
@@ -199,7 +197,7 @@ def main(
         "data": MESH_grid,
         "units": "mm",
         "long_name": "Maximum Expected Size of Hail using " + mesh_method,
-        "standard_name": "MESH " + mesh_method,
+        "description":mesh_description,
         "comments": mesh_comment,
     }
     grid.add_field(mesh_fname, MESH_dict, replace_existing=True)
@@ -210,8 +208,8 @@ def main(
         "data": POSH_grid,
         "units": "%",
         "long_name": "Probability of Severe Hail",
-        "standard_name": "POSH",
-        "comments": "Witt et al. 1998, only valid in the first level",
+        "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
+        "comments": "only valid in the first level of the 3D grid",
     }
     grid.add_field(posh_fname, POSH_dict, replace_existing=True)
 

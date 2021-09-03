@@ -80,9 +80,9 @@ def main(
     if not np.any(hail_mask):
         return {
             "data": hsda,
-            "units": " ",
+            "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
-            "standard_name": "HSDA",
+            "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1"
             "comments": classes,
         }
 
@@ -139,9 +139,8 @@ def main(
     # generate meta
     hsda_meta = {
         "data": hsda,
-        "units": " ",
+        "units": "NA",
         "long_name": "Hail Size Discrimination Algorithm",
-        "standard_name": "HSDA",
         "comments": classes,
     }
 

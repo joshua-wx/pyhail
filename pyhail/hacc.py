@@ -68,7 +68,7 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
     rg = radar.range["data"]
     IWC_3d = np.ma.zeros((len(el_sort_idx), len(az), len(rg)))
     for i, el_idx in enumerate(el_sort_idx):
-        IWC_3d[i, :, :] = IWC[radar.get_slice(el_idx)]
+        IWC_3d[i, :, :] = IWC[radar.get_slice(el_idx)] 
     # mask zero values
     IWC_3d_masked = np.ma.masked_array(IWC_3d, IWC_3d == 0)
     data_shape = IWC_3d_masked.shape
@@ -90,13 +90,12 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
     # hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
     hAcc_field = np.zeros_like(radar.fields[z_fname]["data"])
     hAcc_field[radar.get_slice(el_sort_idx[0])] = hAcc
-    the_comments = "Hail Accumulation Retrieval developed by Wallace et al. 2019"
     hAcc_meta = {
         "data": hAcc_field,
         "units": "cm/min",
         "long_name": "hail accumulation",
-        "standard_name": "hAcc",
-        "comments": the_comments,
+        "description": "Hail Accumulation Retrieval developed by Wallace et al. (2019) doi:10.1175/WAF-D-18-0053.1",
+        "comments": "only valid in the lowest sweep",
     }
 
     return hAcc_meta

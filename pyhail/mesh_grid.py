@@ -115,7 +115,7 @@ def main(
     # extract grids
     dbz_grid = grid.fields[dbz_fname]["data"]
     grid_sz = np.shape(dbz_grid)
-    alt_vec = grid.z["data"]
+    alt_vec = grid.z["data"] + grid.radar_altitude['data'][0] #units m at ASL required for NWP data
     alt_grid = np.tile(alt_vec, (grid_sz[1], grid_sz[2], 1))
     alt_grid = np.swapaxes(alt_grid, 0, 2)  # m
 

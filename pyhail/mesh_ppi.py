@@ -95,7 +95,7 @@ def main(
         x_ppi, y_ppi, z_ppi = radar.get_gate_x_y_z(el_idx)
         X[i, :, :] = x_ppi
         Y[i, :, :] = y_ppi
-        Z[i, :, :] = z_ppi
+        Z[i, :, :] = z_ppi + radar.altitude['data'][0] #units m at ASL required for NWP data
     # calculate ground range by ignoring Z
     ground_range = np.sqrt(X ** 2 + Y ** 2)
 

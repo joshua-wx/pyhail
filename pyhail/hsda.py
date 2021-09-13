@@ -82,7 +82,7 @@ def main(
             "data": hsda,
             "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
-            "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1"
+            "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1",
             "comments": classes,
         }
 
@@ -100,8 +100,9 @@ def main(
     # calc pixel alt
     rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
     rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
-    _, _, alt = common.antenna_to_cartesian(rg / 1000, azg, eleg)
-
+    _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
+    # convert from ARL to ASL (required when using NWP products)
+    atl = alt_arl + radar.altitude['data'][0]
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
     hail_idx = np.where(hail_mask)
@@ -156,7 +157,7 @@ def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
     Parameters:
     ===========
     alt: float
-        altitude of voxel (m)
+        altitude of voxel (m) ASL
     zh: float
         zh value for voxel (dbz)
     zdr: float

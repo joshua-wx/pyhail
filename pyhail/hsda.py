@@ -102,7 +102,7 @@ def main(
     rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
     _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
     # convert from ARL to ASL (required when using NWP products)
-    atl = alt_arl + radar.altitude['data'][0]
+    alt = alt_arl + radar.altitude['data'][0]
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
     hail_idx = np.where(hail_mask)

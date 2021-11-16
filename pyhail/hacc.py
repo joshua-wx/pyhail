@@ -14,7 +14,7 @@ import numpy as np
 from pyhail import common
 
 
-def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
+def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55):
 
     """
     Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016
@@ -27,7 +27,14 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
         wet bulb freezing level (m)
     pressure: float (1,)
         mean pressure between the surface and the height of the 0C wet-bulb temperature
-
+    z_fname: str
+        reflectivity field name
+    hsda_fname: str
+        field name for HSDR
+    mesh_fname: str
+        field name for MESH
+    sp_reflectivity_threshold: float
+        value used to threshold reflectivity for single pol analysis
     Returns:
         hAcc_meta: dict
         pyart field dictionary containing hAcc dataset
@@ -36,9 +43,15 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
     Z = radar.fields[z_fname]["data"]
     if np.ma.is_masked(Z):
         Z = Z.filled(0)
-    hsda = radar.fields[hsda_fname]["data"]
-    if np.ma.is_masked(hsda):
-        hsda = hsda.filled(0)
+    if hsda_fname is None:
+        #use a simple single pol HCA for hail (fixed threshold)
+        hail_hca = Z >=  sp_reflectivity_threshold
+    else:
+        #use hsda to determine hail
+        hail_hca = radar.fields[hsda_fname]["data"]
+        if np.ma.is_masked(hail_hca):
+            hail_hca = hail_hca.filled(0)
+    #load mesh
     mesh = radar.get_field(0, mesh_fname)
     if np.ma.is_masked(mesh):
         mesh = mesh.filled(0)
@@ -56,8 +69,8 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname):
     IWC = (
         (4.4 * 10 ** -5) * Ze ** (0.71) / 1000
     )  # Ice Water Content (kg m-3) derived from Ze follow Heysfield and Miller 1998
-    # remove IWC values where hsda is not hail
-    IWC[hsda < 1] = 0
+    # remove IWC values where hail_hca is not hail (less than 1)
+    IWC[hail_hca < 1] = 0
     # remove IWC values where temperature is at or below 0
     IWC[heights > fz_level] = 0
 

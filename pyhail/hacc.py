@@ -14,10 +14,11 @@ import numpy as np
 from pyhail import common
 
 
-def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55):
+def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55, heights_fieldname='gate_z'):
 
     """
-    Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016
+    Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016.
+    If the heights field exists, this will be used and save a small amount of computation time.
 
     Parameters:
     ===========
@@ -57,9 +58,12 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
         mesh = mesh.filled(0)
 
     # calculate height
-    rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-    rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
-    _, _, heights = common.antenna_to_cartesian(rg / 1000, azg, eleg)
+    try:
+        heights = radar.fields[heights_fieldname]['data']
+    except:
+        rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
+        rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
+        _, _, heights = common.antenna_to_cartesian(rg / 1000, azg, eleg)
 
     n = 0.64  # packing density of monodisperse spheres (Kalina et al. 2016)
     ph = 900  # density of ice (kg m-3)

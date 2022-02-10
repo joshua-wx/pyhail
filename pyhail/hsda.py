@@ -22,6 +22,7 @@ def main(
     snr_name="signal_to_noise_ratio",
     cbb_name="cbb",
     hca_name="radar_echo_classification",
+    heights_fieldname='gate_z'
 ):
 
     """
@@ -103,7 +104,7 @@ def main(
     
     # calc pixel alt
     try:
-        alt = radar.gate_z['data']
+        alt = radar.fields[heights_fieldname]['data']
     except:
         rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
         rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])

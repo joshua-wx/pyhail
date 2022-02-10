@@ -6,9 +6,9 @@ Joshua Soderholm - 15 June 2018
 """
 
 from pyhail import common, hsda_mf
+
 import numpy as np
 import netCDF4
-
 
 def main(
     radar,
@@ -46,6 +46,7 @@ def main(
         hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50
 
     """
+    
     # metadata
     classes = (
         "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
@@ -93,22 +94,29 @@ def main(
 
     # build membership functions
     w, mf = hsda_mf.build_mf()
-
+    
+    # fill missing phidp values with 0
+    if np.ma.isMaskedArray(phi_cf):
+        phi_cf = phi_cf.filled(0)
     # generate quality vector
     q = hsda_q(zh_cf_smooth, phi_cf, rhv_cf_smooth, snr_cf, cbb_cf, cbb_threshold=0.5)
-
+    
     # calc pixel alt
-    rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-    rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
-    _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
-    # convert from ARL to ASL (required when using NWP products)
-    alt = alt_arl + radar.altitude['data'][0]
+    try:
+        alt = radar.gate_z['data']
+    except:
+        rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
+        rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
+        _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
+        # convert from ARL to ASL (required when using NWP products)
+        alt = alt_arl + radar.altitude['data'][0]
+    
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
     hail_idx = np.where(hail_mask)
     # loop through every pixel
     # check for valid hail pixels
-
+    
     try:
         # loop through every hail pixel
         for i in np.nditer(hail_idx):
@@ -144,7 +152,7 @@ def main(
         "long_name": "Hail Size Discrimination Algorithm",
         "comments": classes,
     }
-
+    
     # return radar object
     return hsda_meta
 
@@ -266,16 +274,9 @@ def calc_ag(h_field, alt_field, zh, zdr, rhv, mf, q, w, const):
         out = 0
     else:
         # calc h_ag
-        out = (
-            np.sum(
-                [
-                    w_zh * q["zh"] * zh_mf,
-                    w_zdr * q["zdr"] * zdr_mf,
-                    w_rhv * q["rhv"] * rhv_mf,
-                ]
-            )
-            / np.sum([w_zh * q["zh"], w_zdr * q["zdr"], w_rhv * q["rhv"]])
-        )
+        out = ((w_zh * q["zh"] * zh_mf) +
+                (w_zdr * q["zdr"] * zdr_mf) +
+                (w_rhv * q["rhv"] * rhv_mf)) / (w_zh * q["zh"] + w_zdr * q["zdr"] + w_rhv * q["rhv"])
 
     return out
 
@@ -330,10 +331,9 @@ def h_mf(var, zh, mf_const, const):
         x3 = mf_const[3]
 
     # apply trap values for var to get membership function output
-    out = trapmf(np.array([var]), np.array([x0, x1, x2, x3]))
+    out = trapmf(var, x0, x1, x2, x3)
 
     return out
-
 
 def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
 
@@ -365,49 +365,42 @@ def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
         rhv: array
             correlation coefficent quality array
     """
-
-    # fill missing phidp values with 0
-    if np.ma.isMaskedArray(phi):
-        phi = phi.filled(0)
-
     # parameters
+    snr_db = 10 ** (0.1 * snr)
     Ac = phi / 600
-    Bc = 1.0 / (10 ** (0.1 * snr))
+    Bc = 1.0 / snr_db
     Cc = phi / 300
     Dc = (1 - rhv) / 0.5
-    Ec = 3.16228 / (10 ** (0.1 * snr))
+    Ec = 3.16228 / snr_db
     Fc = phi / 100
     Gc = Dc
-    Hc = 1 / (10 ** (0.1 * snr))
-
+    Hc = 1 / snr_db
+    
     # mask for low quality/dbzh
-    Dc[rhv < 0.8] = 0
-    Gc[rhv < 0.8] = 0
-    Dc[dbzh < 25] = 0
-    Gc[dbzh < 25] = 0
-
+    data_mask = np.logical_or(rhv < 0.8, dbzh < 25)
+    Dc[data_mask] = 0
+    Gc[data_mask] = 0
+    Dc[data_mask] = 0
+    Gc[data_mask] = 0
+    
     # apply beam blocking percentage
     T = cbb / cbb_threshold
 
     # generate quality vectors
-    q_zh = np.exp(-0.69 * (Ac ** 2 + Bc ** 2 + T ** 2))
-    q_zdr = np.exp(-0.69 * (Cc ** 2 + Dc ** 2 + T ** 2))
-    q_rhv = np.exp(-0.69 * (Fc ** 2 + Gc ** 2 + Hc ** 2))
-
+    q_zh = np.exp(-0.69 * (Ac * Ac + Bc * Bc + T * T))
+    q_zdr = np.exp(-0.69 * (Cc * Cc + Dc * Dc + T * T))
+    q_rhv = np.exp(-0.69 * (Fc * Fc + Gc * Gc  + Hc * Hc))
+    
     # apply limits
-    q_zh[q_zh < 0] = 0
-    q_zh[q_zh > 1] = 1
-    q_zdr[q_zdr < 0] = 0
-    q_zdr[q_zdr > 1] = 1
-    q_rhv[q_rhv < 0] = 0
-    q_rhv[q_rhv > 1] = 1
+    q_zh = np.clip(q_zh, 0, 1)
+    q_zdr = np.clip(q_zdr, 0, 1)
+    q_rhv = np.clip(q_rhv, 0, 1)
 
     # pack in dict
     q = {"zh": q_zh, "zdr": q_zdr, "rhv": q_rhv}
     return q
 
-
-def trapmf(x, abcd):
+def trapmf(x, a, b, c, d):
     """
     Trapezoidal membership function generator.
     Parameters
@@ -421,22 +414,18 @@ def trapmf(x, abcd):
         Trapezoidal membership function.
     """
 
-    assert len(abcd) == 4, "abcd parameter must have exactly four elements."
-    a, b, c, d = np.r_[abcd]
-
     assert (
         a <= b and b <= c and c <= d
     ), "abcd requires the four elements \
                                           a <= b <= c <= d."
-
-    y = 0
-
     # Compute y1
     if x > a and x < b:
         y = (x - a) / (b - a)
     elif x >= b and x <= c:
-        y = 1
+        y = 1.0
     elif x > c and x < d:
         y = (d - x) / (d - c)
+    else:
+        y = 0.0
 
     return y

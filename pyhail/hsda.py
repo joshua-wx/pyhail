@@ -55,8 +55,8 @@ def main(
 
     # This dummy proofs the user input. The melting level will always
     # be lower in elevation than the negative 25 deg C isotherm
-    wbt_minus25C = min(levels)
-    wbt_0C = max(levels)
+    wbt_minus25C = max(levels)
+    wbt_0C = min(levels)
 
     # building consts
     const = {
@@ -146,9 +146,15 @@ def main(
     except Exception as e:
         print("error in HSDA: ", e)
 
+    # combine data masks
+    combined_mask = np.ones((radar.nrays, radar.ngates)).astype("bool")
+    for field in [zh_name, zdr_name, rhv_name]:
+        combined_mask *= ~radar.fields[field]["data"].mask
+    hsda_masked = np.ma.masked_array(hsda, ~combined_mask)
+
     # generate meta
     hsda_meta = {
-        "data": hsda,
+        "data": hsda_masked,
         "units": "NA",
         "long_name": "Hail Size Discrimination Algorithm",
         "comments": classes,

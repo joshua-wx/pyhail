@@ -77,7 +77,7 @@ def main(
 
     # check for any valid data
     hail_mask = np.isin(hca, hca_hail_idx)
-    hsda = np.zeros(hca.shape)
+    hsda = np.zeros(hca.shape, dtype=int)
     # skip processing if there's no valid hail pixels
     if not np.any(hail_mask):
         return {
@@ -150,7 +150,7 @@ def main(
     combined_mask = np.ones((radar.nrays, radar.ngates)).astype("bool")
     for field in [zh_name, zdr_name, rhv_name]:
         combined_mask *= ~radar.fields[field]["data"].mask
-    hsda_masked = np.ma.masked_array(hsda, ~combined_mask)
+    hsda_masked = np.ma.masked_array(hsda, ~combined_mask, dtype=int)
 
     # generate meta
     hsda_meta = {

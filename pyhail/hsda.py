@@ -81,7 +81,7 @@ def main(
     # skip processing if there's no valid hail pixels
     if not np.any(hail_mask):
         return {
-            "data": hsda,
+            "data": np.ma.masked_array(hsda, True, dtype=int),
             "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
             "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1",

@@ -64,7 +64,7 @@ def main(
         shi_fname = "shi"
     # require levels
     if levels is None:
-        raise ValueError("Missing levels data for freezing level and -20C level")
+        raise Exception("Missing levels data for freezing level and -20C level")
 
     # This dummy proofs the user input. The melting level will always
     # be lower in elevation than the negative 20 deg C isotherm
@@ -81,6 +81,10 @@ def main(
     rg = radar.range["data"]
     n_bins = len(rg)
 
+    # require more than one sweep
+    if len(el) <= 1:
+        raise Exception("Require more than one sweep to calculate MESH")
+    
     # Initialize arrays
     DBZ = np.zeros((len(el), len(az), len(rg)))
     X = np.zeros_like(DBZ)

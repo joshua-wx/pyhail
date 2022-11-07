@@ -34,9 +34,10 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
+    python_requires='>=3.7',
     package_dir = {'': 'src'},
+    packages=['pyhail'],
     keywords="radar weather meteorology calibration",
-    packages=find_packages(exclude=["contrib", "docs", "tests", "notebooks"]),
     install_requires=["arm_pyart", "numpy", "netCDF4", "scipy"],
     project_urls={"Source": "https://github.com/joshuass/pyhail",},
 )

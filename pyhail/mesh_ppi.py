@@ -45,8 +45,8 @@ def main(
 
     Returns
     -------
-    radar : object
-        Py-ART radar object.
+    output_fields : dictionary
+        Dictionary of output fields (KE, SHI, MESH, POSH)
 
     """
     # Rain/Hail dBZ boundaries
@@ -196,6 +196,8 @@ def main(
     POSH[POSH < 0] = 0
     POSH[POSH > 100] = 100
 
+    output_fields = dict()
+    
     # add grids to radar object
     # unpack E into cfradial representation
     E_cfradial = np.zeros_like(radar.fields[dbz_fname]["data"])
@@ -208,7 +210,7 @@ def main(
         "long_name": "Hail Kinetic Energy",
         "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
     }
-    radar.add_field(ke_fname, ke_dict, replace_existing=True)
+    output_fields[ke_fname] = ke_dict
 
     # SHI,MESH and POSH are only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
     SHI_field = np.zeros_like(radar.fields[dbz_fname]["data"])
@@ -220,7 +222,7 @@ def main(
         "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the lowest sweep",
     }
-    radar.add_field(shi_fname, SHI_dict, replace_existing=True)
+    output_fields[shi_fname] = SHI_dict
 
     MESH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
     MESH_field[radar.get_slice(sort_idx[0])] = MESH
@@ -231,8 +233,8 @@ def main(
         "description":mesh_description,
         "comments": mesh_comment,
     }
-    radar.add_field(mesh_fname, MESH_dict, replace_existing=True)
-
+    output_fields[mesh_fname] = MESH_dict
+    
     POSH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
     POSH_field[radar.get_slice(sort_idx[0])] = POSH
     POSH_dict = {
@@ -242,7 +244,7 @@ def main(
         "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the lowest sweep",
     }
-    radar.add_field(posh_fname, POSH_dict, replace_existing=True)
-
-    # return radar object
-    return radar
+    output_fields[posh_fname] = POSH_dict
+    
+    # return output_fields dictionary
+    return output_fields

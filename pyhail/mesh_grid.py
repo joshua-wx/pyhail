@@ -81,9 +81,9 @@ def main(
 
     Returns
     -------
-    grid : Grid
-        Py-ART grid object.
-
+    output_fields : dictionary
+        Dictionary of output fields (KE, SHI, MESH, POSH)
+        
     """
     # Rain/Hail dBZ boundaries
     Zl = 40
@@ -171,6 +171,8 @@ def main(
     POSH[POSH < 0] = 0
     POSH[POSH > 100] = 100
 
+    output_fields = dict()
+    
     # add grids to grid object
     ke_dict = {
         "data": E,
@@ -178,7 +180,7 @@ def main(
         "long_name": "Hail Kinetic Energy",
         "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
     }
-    grid.add_field(ke_fname, ke_dict, replace_existing=True)
+    output_fields[ke_fname] = ke_dict
 
     SHI_grid = np.zeros_like(E)
     SHI_grid[0, :, :] = SHI
@@ -189,7 +191,7 @@ def main(
         "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the first level of the 3D grid",
     }
-    grid.add_field(shi_fname, SHI_dict, replace_existing=True)
+    output_fields[shi_fname] = SHI_dict
 
     MESH_grid = np.zeros_like(E)
     MESH_grid[0, :, :] = MESH
@@ -200,7 +202,7 @@ def main(
         "description":mesh_description,
         "comments": mesh_comment,
     }
-    grid.add_field(mesh_fname, MESH_dict, replace_existing=True)
+    output_fields[mesh_fname] = MESH_dict
 
     POSH_grid = np.zeros_like(E)
     POSH_grid[0, :, :] = POSH
@@ -211,7 +213,7 @@ def main(
         "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the first level of the 3D grid",
     }
-    grid.add_field(posh_fname, POSH_dict, replace_existing=True)
+    output_fields[posh_fname] = POSH_dict
 
-    # return grid object
-    return grid
+    # return output_fields dictionary
+    return output_fields

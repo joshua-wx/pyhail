@@ -3,12 +3,14 @@
 This toolkit provides a collection of hail retrieval techniques for
 weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit.
 
-### Dependencies
+### Library Dependencies
 - [Py-ART](https://github.com/ARM-DOE/pyart/)
 - numpy
 - netCDF4
 - scipy
-- [wradlib](https://github.com/wradlib/wradlib) - used to generate beam blockage map
+### Notebook Dependencies
+- matplotlib
+- cartopy
 
 ### Hail Retrivals
 - Hail Size Discrimination Algorithm - HSDA ([Ortega et al. 2016](https://journals.ametsoc.org/doi/10.1175/JAMC-D-15-0203.1))

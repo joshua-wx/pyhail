@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyhail"
+version = "2.0.0"
+authors = [
+  { name="Joshua Soderholm", email="joshua.soderholm@bom.gov.au" },
+]
+description = "Python hail retreivals"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/joshua-wx/pyhail"
+"Bug Tracker" = "https://github.com/joshua-wx/pyhail/issues"

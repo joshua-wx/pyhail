@@ -21,7 +21,11 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 
 MESH is implemented for both pyart radar (PPI) and grid (Cartesian) data!
 
-### Install
+### Install using pypi
+
+`pip install pyhail`
+
+### Install from source
 To install pyhail, you can either download and unpack the zip file of the source code or use git to checkout the repository:
 
 `git clone git@github.com:joshua-wx/pyhail.git`

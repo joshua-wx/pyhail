@@ -21,7 +21,7 @@ setup(
     description="Python Hail Weather Radar Retrievals",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/joshuass/PyHail",
+    url="https://github.com/joshuass/pyhail",
     author="Joshua Soderholm",
     author_email="joshua.soderholm@bom.gov.au",  # Optional
     # For a list of valid classifiers, see https://pypi.org/classifiers/
@@ -34,8 +34,9 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
+    package_dir = {'': 'src'},
     keywords="radar weather meteorology calibration",
     packages=find_packages(exclude=["contrib", "docs", "tests", "notebooks"]),
-    install_requires=["arm_pyart", "numpy", "netCDF4"],
-    project_urls={"Source": "https://github.com/joshuass/PyHail/",},
+    install_requires=["arm_pyart", "numpy", "netCDF4", "scipy"],
+    project_urls={"Source": "https://github.com/joshuass/pyhail",},
 )

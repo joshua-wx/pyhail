@@ -1,4 +1,4 @@
-# Python Hail Retrieval Toolkit (PyHail) ⛈️📡🧊
+# Python Hail Retrieval Toolkit (pyhail) ⛈️📡🧊
 
 This toolkit provides a collection of hail retrieval techniques for
 weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit.
@@ -22,14 +22,14 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 MESH is implemented for both pyart radar (PPI) and grid (Cartesian) data!
 
 ### Install
-To install PyHail, you can either download and unpack the zip file of the source code or use git to checkout the repository:
+To install pyhail, you can either download and unpack the zip file of the source code or use git to checkout the repository:
 
-`git clone git@github.com:joshua-wx/PyHail.git`
+`git clone git@github.com:joshua-wx/pyhail.git`
 
 To install in your home directory, use:
 
 `python setup.py install --user`
 
 ### Use
-- [Example Notebook](https://github.com/joshua-wx/PyHail/blob/master/notebooks/example.ipynb)
+- [Example Notebook](https://github.com/joshua-wx/pyhail/blob/master/notebooks/example.ipynb)
 

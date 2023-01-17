@@ -186,7 +186,7 @@ def main(
     SHI_grid[0, :, :] = SHI
     SHI_dict = {
         "data": SHI_grid,
-        "units": "J-1s-1",
+        "units": "Jm-1s-1",
         "long_name": "Severe Hail Index",
         "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the first level of the 3D grid",

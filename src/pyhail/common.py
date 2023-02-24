@@ -8,6 +8,7 @@ Joshua Soderholm - 15 June 2018
 
 import numpy as np
 from scipy.interpolate import interp1d
+from skimage import morphology
 
 def antenna_to_cartesian(ranges, azimuths, elevations):
     """
@@ -156,3 +157,30 @@ def smooth_ppi_rays(ppi_data, n):
     out = np.ma.hstack((ppi_data[:, :offset], ppi_sma, ppi_data[:, -offset:]))
 
     return out
+
+
+def filter_small_objects(field, threshold=0, size=9):
+
+    """run a filter to remove small objects
+
+     Parameters:
+    ===========
+    field: ndarray (n,m)
+        2D array to filter
+    threshold: float
+        intensity threshold to run small objects filter
+    size: int
+        area size (number of pixels) threshold to remove small objects
+    Returns:
+    ========
+    field: narray (n,m)
+    
+    """
+    #apply intensity threshold to produce a mask
+    masked_data = field > threshold
+    #remove small objects
+    filtered_masked_data = morphology.remove_small_objects(masked_data, min_size=size)
+    #apply filter to field
+    field[filtered_masked_data == 0] = threshold
+
+    return field

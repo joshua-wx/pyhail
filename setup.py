@@ -38,6 +38,6 @@ setup(
     package_dir = {'': 'src'},
     packages=['pyhail'],
     keywords="radar weather meteorology calibration",
-    install_requires=["arm_pyart", "numpy", "netCDF4", "scipy"],
+    install_requires=["arm_pyart", "numpy", "netCDF4", "scipy", "scikit-image"],
     project_urls={"Source": "https://github.com/joshuass/pyhail",},
 )

@@ -8,6 +8,7 @@ weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit
 - numpy
 - netCDF4
 - scipy
+- scikit-image
 ### Notebook Dependencies
 - matplotlib
 - cartopy

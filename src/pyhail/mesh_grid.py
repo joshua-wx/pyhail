@@ -8,7 +8,6 @@ import os
 
 import netCDF4
 import numpy as np
-import pyart
 
 from pyhail import common
 
@@ -41,11 +40,8 @@ def _get_latlon(grid, dbz_fname):
     for lvl in range(grid.nz):
         lontot[lvl, :, :], lattot[lvl, :, :] = grid.get_point_longitude_latitude(lvl)
 
-    longitude = pyart.config.get_metadata("longitude")
-    latitude = pyart.config.get_metadata("latitude")
-
-    longitude["data"] = lontot
-    latitude["data"] = lattot
+    longitude = {'long_name': 'Longitude', 'standard_name': 'Longitude', 'units': 'degrees_east', 'data':lontot}
+    latitude = {'long_name': 'Latitude', 'standard_name': 'Latitude', 'units': 'degrees_north', 'data':lattot}
 
     return longitude, latitude
 
@@ -186,7 +182,7 @@ def main(
     SHI_grid[0, :, :] = SHI
     SHI_dict = {
         "data": SHI_grid,
-        "units": "J-1s-1",
+        "units": "Jm-1s-1",
         "long_name": "Severe Hail Index",
         "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
         "comments": "only valid in the first level of the 3D grid",

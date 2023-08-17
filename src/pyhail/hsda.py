@@ -144,7 +144,7 @@ def main(
             pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
             hsda[i] = pixel_hsda
     except Exception as e:
-        print("error in HSDA: ", e)
+        print("error in HSDA: ", e, 'time:', radar.time['units'])
 
     # combine data masks
     combined_mask = np.ones((radar.nrays, radar.ngates)).astype("bool")
@@ -220,16 +220,18 @@ def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
 
     # find last (largest) max ag
     ag_vec = np.array([h1_ag, h2_ag, h3_ag])
-    max_ag = np.max(ag_vec)
+    max_ag = np.nanmax(ag_vec)
     out = np.where(ag_vec == max_ag)
-    out = out[0][-1] + 1  # last item, using 1,2,3 indexing
-    # rule 2
-    if max_ag < 0.6:
-        out = 1
-    # rule 3
-    if out > 1 and zdr >= 2:
-        out = 1
-
+    if len(out) == 0:
+        out = 0 #entirely nan/invalid data, so no hail assignment
+    else:
+        out = out[0][-1] + 1  # last item, using 1,2,3 indexing
+        # rule 2
+        if max_ag < 0.6:
+            out = 1
+        # rule 3
+        if out > 1 and zdr >= 2:
+            out = 1
     return out
 
 

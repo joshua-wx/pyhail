@@ -19,7 +19,8 @@ def main(
     mesh_fname=None,
     posh_fname=None,
     ke_fname=None,
-    shi_fname=None
+    shi_fname=None,
+    correct_cband_refl=True
 ):
 
     """
@@ -44,7 +45,8 @@ def main(
         Default is 'mesh', 'posh', 'hail_ke', 'shi'.
     mesh_method : string
         either witt1998, mh2019_75 or mh2019_95. see more information below
-
+    correct_cband_refl: logical
+        flag to trigger C band hail reflectivity correction (if radar_band is C)
     Returns
     -------
     output_fields : dictionary
@@ -52,7 +54,7 @@ def main(
     """
 
     # require C or S band
-    if radar_band is not "C" or "S":
+    if radar_band != "C" or radar_band != "S":
         raise ValueError("radar_band must be a string of value C or S")
     # require levels
     if levels is None:
@@ -103,7 +105,7 @@ def main(
 
     #apply C band correction
     hail_refl_correction_description = ''
-    if radar_band == 'C':
+    if radar_band == 'C' and correct_cband_refl:
         dbz_grid = (dbz_grid + 3.929) / 1.113
         hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
 

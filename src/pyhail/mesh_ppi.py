@@ -8,18 +8,18 @@ Joshua Soderholm - 15 August 2020
 import time
 import numpy as np
 
-
 def main(
     radar,
     dbz_fname,
     levels,
+    radar_band='C',
     min_range=10,
     max_range=150,
     mesh_method="mh2019_95",
     mesh_fname=None,
     posh_fname=None,
     ke_fname=None,
-    shi_fname=None,
+    shi_fname=None
 ):
 
     """
@@ -33,6 +33,8 @@ def main(
         Name of reflectivity field in the radar object.
     levels : list of length 2
         height above sea level (m) of the freezing level and -20C level (in any order)
+    radar_band: str 
+        radar frequency band (either C or S)
     min_range: int
         minimum surface range for MESH retrieval (m)
     max_range: int
@@ -47,8 +49,15 @@ def main(
     -------
     output_fields : dictionary
         Dictionary of output fields (KE, SHI, MESH, POSH)
-
     """
+
+    # require C or S band
+    if radar_band is not "C" or "S":
+        raise ValueError("radar_band must be a string of value C or S")
+    # require levels
+    if levels is None:
+        raise ValueError("Missing levels data for freezing level and -20C level")
+    
     # Rain/Hail dBZ boundaries
     Zl = 40
     Zu = 50
@@ -62,9 +71,6 @@ def main(
         ke_fname = "hail_ke"
     if shi_fname is None:
         shi_fname = "shi"
-    # require levels
-    if levels is None:
-        raise Exception("Missing levels data for freezing level and -20C level")
 
     # This dummy proofs the user input. The melting level will always
     # be lower in elevation than the negative 20 deg C isotherm
@@ -84,6 +90,8 @@ def main(
     # require more than one sweep
     if len(el) <= 1:
         raise Exception("Require more than one sweep to calculate MESH")
+    elif len(el) < 10:
+        raise Warning("Number of sweep is less than 10 and not recommended for MESH calculations")
     
     # Initialize arrays
     DBZ = np.zeros((len(el), len(az), len(rg)))
@@ -92,6 +100,13 @@ def main(
     Z = np.zeros_like(DBZ)
     dZ = np.zeros_like(DBZ)
     SHI = np.zeros((len(az), len(rg)))
+
+    #apply C band correction
+    hail_refl_correction_description = ''
+    if radar_band == 'C':
+        dbz_grid = (dbz_grid + 3.929) / 1.113
+        hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
+
 
     # build 3D vol grids of reflectivity and Cartesian coords
     for i, el_idx in enumerate(sort_idx):
@@ -167,20 +182,20 @@ def main(
         mesh_method == "witt1998"
     ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
         MESH = 2.54 * SHI ** 0.5
-        mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2"
+        mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
         mesh_comment = "75th percentile fit using 147 hail reports; only valid in the lowest sweep"
         
     elif (
         mesh_method == "mh2019_75"
     ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 15.096 * SHI ** 0.206
-        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1"
+        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the lowest sweep"
     elif (
         mesh_method == "mh2019_95"
     ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 22.157 * SHI ** 0.212
-        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1"
+        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the lowest sweep"
     else:
         raise ValueError(
@@ -208,7 +223,8 @@ def main(
         "data": E_cfradial,
         "units": "Jm-2s-1",
         "long_name": "Hail Kinetic Energy",
-        "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
+        "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " + 
+        hail_refl_correction_description,
     }
     output_fields[ke_fname] = ke_dict
 
@@ -219,7 +235,8 @@ def main(
         "data": SHI_field,
         "units": "Jm-1s-1",
         "long_name": "Severe Hail Index",
-        "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
+        "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " + 
+        hail_refl_correction_description,
         "comments": "only valid in the lowest sweep",
     }
     output_fields[shi_fname] = SHI_dict
@@ -230,7 +247,7 @@ def main(
         "data": MESH_field,
         "units": "mm",
         "long_name": "Maximum Expected Size of Hail using " + mesh_method,
-        "description":mesh_description,
+        "description":mesh_description + hail_refl_correction_description,
         "comments": mesh_comment,
     }
     output_fields[mesh_fname] = MESH_dict
@@ -241,7 +258,8 @@ def main(
         "data": POSH_field,
         "units": "%",
         "long_name": "Probability of Severe Hail",
-        "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2",
+        "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " +
+        hail_refl_correction_description,
         "comments": "only valid in the lowest sweep",
     }
     output_fields[posh_fname] = POSH_dict

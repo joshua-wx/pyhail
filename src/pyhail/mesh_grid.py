@@ -8,9 +8,35 @@ import os
 
 import netCDF4
 import numpy as np
+from skimage import morphology
 
 from pyhail import common
 
+def filter_small_objects(field, threshold=0, size=9):
+
+    """run a filter to remove small objects
+
+     Parameters:
+    ===========
+    field: ndarray (n,m)
+        2D array to filter
+    threshold: float
+        intensity threshold to run small objects filter
+    size: int
+        area size (number of pixels) threshold to remove small objects
+    Returns:
+    ========
+    field: narray (n,m)
+    
+    """
+    #apply intensity threshold to produce a mask
+    masked_data = field > threshold
+    #remove small objects
+    filtered_masked_data = morphology.remove_small_objects(masked_data, min_size=size)
+    #apply filter to field
+    field[filtered_masked_data == 0] = threshold
+
+    return field
 
 def _get_latlon(grid, dbz_fname):
     """
@@ -56,6 +82,7 @@ def main(
     posh_fname=None,
     ke_fname=None,
     shi_fname=None,
+    speckle_filter=True
 ):
 
     """
@@ -77,7 +104,8 @@ def main(
         Default is 'mesh', 'posh', 'hail_ke', 'shi'.
     mesh_method : string
         either witt1998, mh2019_75 or mh2019_95. see more information below
-
+    speckle_filter: logical
+        flag for running the speckle filter
     Returns
     -------
     output_fields : dictionary
@@ -180,6 +208,10 @@ def main(
     POSH = np.real(POSH)
     POSH[POSH < 0] = 0
     POSH[POSH > 100] = 100
+
+    #apply speckle filter
+    if speckle_filter:
+        SHI = filter_small_objects(SHI)
 
     output_fields = dict()
     

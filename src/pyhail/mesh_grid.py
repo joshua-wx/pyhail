@@ -116,7 +116,7 @@ def main(
     """
     
     # require C or S band
-    if radar_band != "C" or radar_band != "S":
+    if radar_band not in ["C","S"]:
         raise ValueError("radar_band must be a string of value C or S")
     # require levels
     if levels is None:
@@ -157,7 +157,7 @@ def main(
     #apply C band correction
     hail_refl_correction_description = ''
     if radar_band == 'C' and correct_cband_refl:
-        dbz_grid = (dbz_grid + 3.929) / 1.113
+        dbz_grid = dbz_grid*1.113 - 3.929
         hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
 
     # calc reflectivity weighting function

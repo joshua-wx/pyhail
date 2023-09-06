@@ -54,7 +54,7 @@ def main(
     """
 
     # require C or S band
-    if radar_band != "C" or radar_band != "S":
+    if radar_band not in ["C","S"]:
         raise ValueError("radar_band must be a string of value C or S")
     # require levels
     if levels is None:
@@ -103,13 +103,6 @@ def main(
     dZ = np.zeros_like(DBZ)
     SHI = np.zeros((len(az), len(rg)))
 
-    #apply C band correction
-    hail_refl_correction_description = ''
-    if radar_band == 'C' and correct_cband_refl:
-        dbz_grid = (dbz_grid + 3.929) / 1.113
-        hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
-
-
     # build 3D vol grids of reflectivity and Cartesian coords
     for i, el_idx in enumerate(sort_idx):
         DBZ[i, :, :] = radar.get_field(el_idx, dbz_fname)
@@ -119,6 +112,12 @@ def main(
         Z[i, :, :] = z_ppi + radar.altitude['data'][0] #units m at ASL required for NWP data
     # calculate ground range by ignoring Z
     ground_range = np.sqrt(X ** 2 + Y ** 2)
+
+    #apply C band correction
+    hail_refl_correction_description = ''
+    if radar_band == 'C' and correct_cband_refl:
+        DBZ = DBZ*1.113 - 3.929
+        hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
 
     # calculate dZ (used for SHI)
     for i in range(n_ppi):

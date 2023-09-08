@@ -16,6 +16,8 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+keywords = ["radar", "weather", "meteorology", "calibration"]
+dependencies=["arm_pyart", "numpy", "netCDF4", "scipy", "scikit-image"]
 
 [project.urls]
 "Homepage" = "https://github.com/joshua-wx/pyhail"

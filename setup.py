@@ -17,7 +17,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="pyhail",
-    version="2.0.1",
+    version="2.2",
     description="Python Hail Weather Radar Retrievals",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -30,14 +30,12 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Atmospheric Science",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     python_requires='>=3.7',
     package_dir = {'': 'src'},
     packages=['pyhail'],
-    keywords="radar weather meteorology calibration",
-    install_requires=["arm_pyart", "numpy", "netCDF4", "scipy", "scikit-image"],
     project_urls={"Source": "https://github.com/joshuass/pyhail",},
 )

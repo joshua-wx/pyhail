@@ -20,9 +20,6 @@ def main(
     zh_name="corrected_reflectivity",
     zdr_name="corrected_differential_reflectivity",
     rhv_name="cross_correlation_ratio",
-    phi_name="corrected_differential_phase",
-    snr_name="signal_to_noise_ratio",
-    cbb_name="cbb",
     hca_name="radar_echo_classification",
     heights_fieldname='gate_z'
 ):
@@ -65,9 +62,6 @@ def main(
     zh_cf = radar.fields[zh_name]["data"]
     zdr_cf = radar.fields[zdr_name]["data"]
     rhv_cf = radar.fields[rhv_name]["data"]
-    phi_cf = radar.fields[phi_name]["data"]
-    snr_cf = radar.fields[snr_name]["data"]
-    cbb_cf = radar.fields[cbb_name]["data"]
     hca = radar.fields[hca_name]["data"]
 
     # check for any valid data
@@ -87,10 +81,6 @@ def main(
     zh_cf_smooth = common.smooth_ppi_rays(zh_cf, 5)
     zdr_cf_smooth = common.smooth_ppi_rays(zdr_cf, 5)
     rhv_cf_smooth = common.smooth_ppi_rays(rhv_cf, 5)
-    
-    # fill missing phidp values with 0
-    if np.ma.isMaskedArray(phi_cf):
-        phi_cf = phi_cf.filled(0)
     
     # generate quality vector if none exists
     if q is None:

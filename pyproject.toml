@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyhail"
-version = "2.2"
+version = "2.3"
 authors = [
   { name="Joshua Soderholm", email="joshua.soderholm@bom.gov.au" },
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["radar", "weather", "meteorology", "calibration"]
-dependencies=["arm_pyart", "numpy", "netCDF4", "scipy", "scikit-image"]
+dependencies=["arm_pyart", "numpy", "netCDF4", "scipy", "scikit-image", "numba"]
 
 [project.urls]
 "Homepage" = "https://github.com/joshua-wx/pyhail"

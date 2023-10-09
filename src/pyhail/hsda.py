@@ -7,6 +7,7 @@ Joshua Soderholm - 15 June 2018
 
 from pyhail import common, hsda_mf
 
+from numba import jit
 import numpy as np
 import netCDF4
 
@@ -15,6 +16,7 @@ def main(
     levels,
     hca_hail_idx,
     dzdr=0,
+    q=None,
     zh_name="corrected_reflectivity",
     zdr_name="corrected_differential_reflectivity",
     rhv_name="cross_correlation_ratio",
@@ -38,6 +40,8 @@ def main(
         index of hail related fields in classification to apply HSDA
     dzdr:
         offset for differential reflectivity
+    q:
+        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
     ####_name: string
         field name from radar object
 
@@ -47,7 +51,6 @@ def main(
         hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50
 
     """
-    
     # metadata
     classes = (
         "1: Small Hail (< 25 mm); 2: Large Hail (25 - 50 mm); 3: Giant Hail (> 50 mm)"
@@ -57,14 +60,6 @@ def main(
     # be lower in elevation than the negative 25 deg C isotherm
     wbt_minus25C = max(levels)
     wbt_0C = min(levels)
-
-    # building consts
-    const = {
-        "wbt_minus25C": wbt_minus25C,
-        "wbt_0C": wbt_0C,
-        "dzdr": dzdr,
-        "hca_hail_idx": hca_hail_idx,
-    }
 
     # load data
     zh_cf = radar.fields[zh_name]["data"]
@@ -92,22 +87,21 @@ def main(
     zh_cf_smooth = common.smooth_ppi_rays(zh_cf, 5)
     zdr_cf_smooth = common.smooth_ppi_rays(zdr_cf, 5)
     rhv_cf_smooth = common.smooth_ppi_rays(rhv_cf, 5)
-
-    # build membership functions
-    w, mf = hsda_mf.build_mf()
     
     # fill missing phidp values with 0
     if np.ma.isMaskedArray(phi_cf):
         phi_cf = phi_cf.filled(0)
-    # generate quality vector
-    q = hsda_q(zh_cf_smooth, phi_cf, rhv_cf_smooth, snr_cf, cbb_cf, cbb_threshold=0.5)
+    
+    # generate quality vector if none exists
+    if q is None:
+        q = {"zh":np.ones_like(zh_cf_smooth), "zdr":np.ones_like(zh_cf_smooth), "rhv":np.ones_like(zh_cf_smooth)}
     
     # calc pixel alt
     try:
         alt = radar.fields[heights_fieldname]['data']
     except:
         rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-        rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
+        _, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
         _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
         # convert from ARL to ASL (required when using NWP products)
         alt = alt_arl + radar.altitude['data'][0]
@@ -115,37 +109,64 @@ def main(
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
     hail_idx = np.where(hail_mask)
+    
     # loop through every pixel
     # check for valid hail pixels
-    
     try:
         # loop through every hail pixel
         for i in np.nditer(hail_idx):
+            
+            #extract altitude
             tmp_alt = alt[i]
+            
+            #extract radar data
             tmp_zh = zh_cf_smooth[i]
             tmp_zdr = zdr_cf_smooth[i]
             tmp_rhv = rhv_cf_smooth[i]
+            
+            #extract quality
             tmp_q_zh = q["zh"][i]
             tmp_q_zdr = q["zdr"][i]
             tmp_q_rhv = q["rhv"][i]
-            tmp_q = {"zh": tmp_q_zh, "zdr": tmp_q_zdr, "rhv": tmp_q_rhv}
+            tmp_q = np.array([tmp_q_zh, tmp_q_zdr, tmp_q_rhv])
+            
+            #check for valid values
             if (
                 np.ma.is_masked(tmp_zh)
                 or np.ma.is_masked(tmp_zdr)
                 or np.ma.is_masked(tmp_rhv)
             ):
                 continue
-            if (
-                np.ma.is_masked(tmp_q_zh)
-                or np.ma.is_masked(tmp_q_zdr)
-                or np.ma.is_masked(tmp_q_rhv)
-            ):
-                continue
-            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf, tmp_q, w, const)
+            
+            # allocate alt field
+            if tmp_alt >= wbt_minus25C:
+                alt_index = 0
+            elif tmp_alt >= wbt_0C:
+                alt_index = 1
+            elif tmp_alt >= (wbt_0C - 1000):
+                alt_index = 2
+            elif tmp_alt >= (wbt_0C - 2000):
+                alt_index = 3
+            elif tmp_alt >= (wbt_0C - 3000):
+                alt_index = 4
+            else:
+                alt_index = 5
+
+            # build membership functions
+            w, mf_h1, mf_h2, mf_h3 = hsda_mf.build_mf(alt_index, tmp_zh, dzdr)
+            w = np.array(w)
+            mf_h1 = np.array(mf_h1)
+            mf_h2 = np.array(mf_h2)
+            mf_h3 = np.array(mf_h3)
+            
+            #calculate hsda value
+            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf_h1, mf_h2, mf_h3, tmp_q, w, dzdr)
             hsda[i] = pixel_hsda
+        
     except Exception as e:
         print("error in HSDA: ", e, 'time:', radar.time['units'])
-
+    
+        
     # combine data masks
     combined_mask = np.ones((radar.nrays, radar.ngates)).astype("bool")
     for field in [zh_name, zdr_name, rhv_name]:
@@ -159,12 +180,11 @@ def main(
         "long_name": "Hail Size Discrimination Algorithm",
         "comments": classes,
     }
-    
     # return radar object
     return hsda_meta
 
-
-def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
+@jit(nopython=True)
+def h_sz(alt, zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w, dzdr):
 
     """
     calculates the hail size class for a radar voxel
@@ -179,14 +199,16 @@ def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
         zdr value for voxel (db)
     rhv: float
         CC value for voxel
-    mf: dict
-        hsda memebership functions
-    q: dict
-        confidence vectors
-    w: dict
-        field height interval weights
-    const: dict
-        containing dzdr and height constantssses in exisiting classification field
+    mf_h1: array of floats of length 4
+        membership function shape for small hail
+    mf_h2: array of floats of length 4
+        membership function shape for large hail      
+    mf_h3: array of floats of length 4
+        membership function shape for giant hail
+    q: array of floats of length 3
+        [zh quality, zdr quality, rhv quality]
+    w: array of floats of length 3
+        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, rhv weight in HSDA for altitude]
     dzdr: float
         offset for differential reflectivity
 
@@ -197,26 +219,12 @@ def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
 
     """
 
-    # allocate alt field
-    if alt >= const["wbt_minus25C"]:
-        alt_field = "a1"
-    elif alt >= const["wbt_0C"]:
-        alt_field = "a2"
-    elif alt >= (const["wbt_0C"] - 1000):
-        alt_field = "a3"
-    elif alt >= (const["wbt_0C"] - 2000):
-        alt_field = "a4"
-    elif alt >= (const["wbt_0C"] - 3000):
-        alt_field = "a5"
-    else:
-        alt_field = "a6"
-
     # small hail
-    h1_ag = calc_ag("h1", alt_field, zh, zdr, rhv, mf, q, w, const)
+    h1_ag = calc_ag(mf_h1, zh, zdr, rhv, q, w, dzdr)
     # large hail
-    h2_ag = calc_ag("h2", alt_field, zh, zdr, rhv, mf, q, w, const)
+    h2_ag = calc_ag(mf_h2, zh, zdr, rhv, q, w, dzdr)
     # giant hail
-    h3_ag = calc_ag("h3", alt_field, zh, zdr, rhv, mf, q, w, const)
+    h3_ag = calc_ag(mf_h3, zh, zdr, rhv, q, w, dzdr)
 
     # find last (largest) max ag
     ag_vec = np.array([h1_ag, h2_ag, h3_ag])
@@ -232,10 +240,11 @@ def h_sz(alt, zh, zdr, rhv, mf, q, w, const):
         # rule 3
         if out > 1 and zdr >= 2:
             out = 1
+    
     return out
 
-
-def calc_ag(h_field, alt_field, zh, zdr, rhv, mf, q, w, const):
+@jit(nopython=True)
+def calc_ag(mf, zh, zdr, rhv, q, w, dzdr):
 
     """
     calculates the polarmetic aggregates for a hail size class
@@ -252,14 +261,15 @@ def calc_ag(h_field, alt_field, zh, zdr, rhv, mf, q, w, const):
         zdr value for voxel (db)
     rhv: float
         CC value for voxel
-    mf: dict
-        hsda memebership functions
-    q: dict
-        confidence vectors
-    w: dict
-        field height interval weights
-    const: dict
-        containing dzdr and height constantssses in exisiting classification field
+    mf: array of floats of length 4
+        membership function shape  
+    q: array of floats of length 3
+        [zh quality, zdr quality, rhv quality]
+    w: array of floats of length 3
+        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, rhv weight in HSDA for altitude]
+    dzdr: float
+        zdr offset
+        
 
     Returns:
     ========
@@ -267,148 +277,32 @@ def calc_ag(h_field, alt_field, zh, zdr, rhv, mf, q, w, const):
         aggregate value for hail size class
 
     """
-
-    # weight
-    w_zh = w["".join([alt_field, ".zh"])]
-    w_zdr = w["".join([alt_field, ".zdr"])]
-    w_rhv = w["".join([alt_field, ".rhv"])]
-
-    # mf
-    zh_mf = h_mf(zh, zh, mf["".join([alt_field, ".", h_field, ".zh"])], const)
-    zdr_mf = h_mf(zdr, zh, mf["".join([alt_field, ".", h_field, ".zdr"])], const)
-    rhv_mf = h_mf(rhv, zh, mf["".join([alt_field, ".", h_field, ".rhv"])], const)
+    q_zh = q[0]
+    q_zdr = q[1]
+    q_rhv = q[2]
+    w_zh = w[0]
+    w_zdr = w[1]
+    w_rhv = w[2]
+    zh_mf_coeff = mf[0,:]
+    zdr_mf_coeff = mf[1,:]
+    rhv_mf_coeff = mf[2,:]
+    
+    zh_mf = trapmf(zh, zh_mf_coeff[0], zh_mf_coeff[1], zh_mf_coeff[2], zh_mf_coeff[3])
+    zdr_mf = trapmf(zdr, zdr_mf_coeff[0], zdr_mf_coeff[1], zdr_mf_coeff[2], zdr_mf_coeff[3])
+    rhv_mf = trapmf(rhv, rhv_mf_coeff[0], rhv_mf_coeff[1], rhv_mf_coeff[2], rhv_mf_coeff[3])
 
     # rule 1
-    if np.min([zh_mf, zdr_mf, rhv_mf]) < 0.2:
+    if np.min(np.array([zh_mf, zdr_mf, rhv_mf])) < 0.2:
         out = 0
     else:
         # calc h_ag
-        out = ((w_zh * q["zh"] * zh_mf) +
-                (w_zdr * q["zdr"] * zdr_mf) +
-                (w_rhv * q["rhv"] * rhv_mf)) / (w_zh * q["zh"] + w_zdr * q["zdr"] + w_rhv * q["rhv"])
+        out = ((w_zh * q_zh * zh_mf) +
+                (w_zdr * q_zdr * zdr_mf) +
+                (w_rhv * q_rhv * rhv_mf)) / (w_zh * q_zh + w_zdr * q_zdr + w_rhv * q_rhv)
 
     return out
 
-
-def h_mf(var, zh, mf_const, const):
-
-    """
-    calculates the membership function values for a polarmetic variable
-
-    Parameters:
-    ===========
-    var: float
-        variable value to apply to memebership functions
-    h_sz: string
-        hail size field name (h1,h2 or h3)
-    zh: float
-       zh value for voxel (dbz)
-    const: dict
-        containing dzdr and height constants
-    mf_const: dict
-        trap membership function values
-
-    Returns:
-    ========
-    out: float
-        membership function value for input var
-
-    """
-
-    # if cell, apply functions to get trap values
-    if type(mf_const[0]) is list:
-        fun0 = mf_const[0][0]
-        offset = mf_const[0][1]
-        x0 = fun0(offset, zh, const["dzdr"])
-
-        fun1 = mf_const[1][0]
-        offset = mf_const[1][1]
-        x1 = fun1(offset, zh, const["dzdr"])
-
-        fun2 = mf_const[2][0]
-        offset = mf_const[2][1]
-        x2 = fun2(offset, zh, const["dzdr"])
-
-        fun3 = mf_const[3][0]
-        offset = mf_const[3][1]
-        x3 = fun3(offset, zh, const["dzdr"])
-
-    else:
-        x0 = mf_const[0]
-        x1 = mf_const[1]
-        x2 = mf_const[2]
-        x3 = mf_const[3]
-
-    # apply trap values for var to get membership function output
-    out = trapmf(var, x0, x1, x2, x3)
-
-    return out
-
-def hsda_q(dbzh, phi, rhv, snr, cbb, cbb_threshold):
-
-    """
-    calculates the membership function values for a polarmetic variable
-
-    Parameters:
-    ===========
-    dbzh: array
-        reflectivity (dBZ)
-    phi: array
-        differential phase
-    rhv: array
-       correlation coefficent
-    snr: array
-        signal to noise
-    cbb: array
-        cumulative beam blocking
-    cbb_threshold: float
-        fraction for cbb (typically 0.5)
-
-    Returns:
-    ========
-    q: dict
-        zh: array
-            reflectivity quality array
-        zdr: array
-            differential reflectivity quality array
-        rhv: array
-            correlation coefficent quality array
-    """
-    # parameters
-    snr_db = 10 ** (0.1 * snr)
-    Ac = phi / 600
-    Bc = 1.0 / snr_db
-    Cc = phi / 300
-    Dc = (1 - rhv) / 0.5
-    Ec = 3.16228 / snr_db
-    Fc = phi / 100
-    Gc = Dc
-    Hc = 1 / snr_db
-    
-    # mask for low quality/dbzh
-    data_mask = np.logical_or(rhv < 0.8, dbzh < 25)
-    Dc[data_mask] = 0
-    Gc[data_mask] = 0
-    Dc[data_mask] = 0
-    Gc[data_mask] = 0
-    
-    # apply beam blocking percentage
-    T = cbb / cbb_threshold
-
-    # generate quality vectors
-    q_zh = np.exp(-0.69 * (Ac * Ac + Bc * Bc + T * T))
-    q_zdr = np.exp(-0.69 * (Cc * Cc + Dc * Dc + T * T))
-    q_rhv = np.exp(-0.69 * (Fc * Fc + Gc * Gc  + Hc * Hc))
-    
-    # apply limits
-    q_zh = np.clip(q_zh, 0, 1)
-    q_zdr = np.clip(q_zdr, 0, 1)
-    q_rhv = np.clip(q_rhv, 0, 1)
-
-    # pack in dict
-    q = {"zh": q_zh, "zdr": q_zdr, "rhv": q_rhv}
-    return q
-
+@jit(nopython=True)
 def trapmf(x, a, b, c, d):
     """
     Trapezoidal membership function generator.

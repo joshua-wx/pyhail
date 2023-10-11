@@ -84,7 +84,7 @@ def main(
     
     # generate quality vector if none exists
     if q is None:
-        q = {"zh":np.ones_like(zh_cf_smooth), "zdr":np.ones_like(zh_cf_smooth), "rhv":np.ones_like(zh_cf_smooth)}
+        q = {"zh":np.ones(hca.shape), "zdr":np.ones(hca.shape), "rhv":np.ones(hca.shape)}
     
     # calc pixel alt
     try:

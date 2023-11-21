@@ -104,15 +104,15 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
     hAcc = (1 / epsilon) * (1 / (n * ph)) * IWC_lowest_valid * Vt
     hAcc = hAcc * 60  # convert cm/s to cm/min
 
-    # hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
+    # hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the first sweep
     hAcc_field = np.zeros_like(radar.fields[z_fname]["data"])
-    hAcc_field[radar.get_slice(el_sort_idx[0])] = hAcc
+    hAcc_field[radar.get_slice(0)] = hAcc
     hAcc_meta = {
         "data": hAcc_field,
         "units": "cm/min",
         "long_name": "hail accumulation",
         "description": "Hail Accumulation Retrieval developed by Wallace et al. (2019) doi:10.1175/WAF-D-18-0053.1",
-        "comments": "only valid in the lowest sweep",
+        "comments": "only valid in the first sweep",
     }
 
     return hAcc_meta

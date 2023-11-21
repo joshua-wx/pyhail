@@ -184,20 +184,20 @@ def main(
     ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
         MESH = 2.54 * SHI ** 0.5
         mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
-        mesh_comment = "75th percentile fit using 147 hail reports; only valid in the lowest sweep"
+        mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first sweep"
         
     elif (
         mesh_method == "mh2019_75"
     ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 15.096 * SHI ** 0.206
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
-        mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the lowest sweep"
+        mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first sweep"
     elif (
         mesh_method == "mh2019_95"
     ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
         MESH = 22.157 * SHI ** 0.212
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
-        mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the lowest sweep"
+        mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first sweep"
     else:
         raise ValueError(
             "unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95"
@@ -231,19 +231,19 @@ def main(
 
     # SHI,MESH and POSH are only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
     SHI_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    SHI_field[radar.get_slice(sort_idx[0])] = SHI
+    SHI_field[radar.get_slice(0)] = SHI
     SHI_dict = {
         "data": SHI_field,
         "units": "Jm-1s-1",
         "long_name": "Severe Hail Index",
         "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " + 
         hail_refl_correction_description,
-        "comments": "only valid in the lowest sweep",
+        "comments": "only valid in the first sweep",
     }
     output_fields[shi_fname] = SHI_dict
 
     MESH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    MESH_field[radar.get_slice(sort_idx[0])] = MESH
+    MESH_field[radar.get_slice(0)] = MESH
     MESH_dict = {
         "data": MESH_field,
         "units": "mm",
@@ -254,14 +254,14 @@ def main(
     output_fields[mesh_fname] = MESH_dict
     
     POSH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    POSH_field[radar.get_slice(sort_idx[0])] = POSH
+    POSH_field[radar.get_slice(0)] = POSH
     POSH_dict = {
         "data": POSH_field,
         "units": "%",
         "long_name": "Probability of Severe Hail",
         "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " +
         hail_refl_correction_description,
-        "comments": "only valid in the lowest sweep",
+        "comments": "only valid in the first sweep",
     }
     output_fields[posh_fname] = POSH_dict
     

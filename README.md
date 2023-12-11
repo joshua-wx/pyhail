@@ -1,10 +1,10 @@
 # Python Hail Retrieval Toolkit (pyhail) ⛈️📡🧊
 
 This toolkit provides a collection of hail retrieval techniques for
-weather radar data using the [Py-ART](https://github.com/ARM-DOE/pyart/) toolkit.
+weather radar data.
 
 ### Library Dependencies
-- [Py-ART](https://github.com/ARM-DOE/pyart/)
+- [Py-ART](https://github.com/ARM-DOE/pyart/) for ingesting data
 - numpy
 - netCDF4
 - scipy
@@ -40,3 +40,4 @@ To install in your home directory, use:
 ### Use
 - [Example Notebook](https://github.com/joshua-wx/pyhail/blob/master/notebooks/example.ipynb)
 
+This project is maintained by Joshua Soderholm. Any problems? Please use the Github issue tracker.

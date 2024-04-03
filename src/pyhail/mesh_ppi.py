@@ -105,7 +105,11 @@ def main(
 
     # build 3D vol grids of reflectivity and Cartesian coords
     for i, el_idx in enumerate(sort_idx):
-        DBZ[i, :, :] = radar.get_field(el_idx, dbz_fname)
+        tmp_field = radar.get_field(el_idx, dbz_fname)
+        if np.shape(tmp_field) == (len(az), len(rg)):
+            DBZ[i, :, :] = tmp_field
+        else:
+            raise Exception("Corrupt volume, sweeps of different shapes detected")
         x_ppi, y_ppi, z_ppi = radar.get_gate_x_y_z(el_idx)
         X[i, :, :] = x_ppi
         Y[i, :, :] = y_ppi

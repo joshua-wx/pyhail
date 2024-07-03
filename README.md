@@ -9,6 +9,7 @@ weather radar data.
 - netCDF4
 - scipy
 - scikit-image
+- numba
 ### Notebook Dependencies
 - matplotlib
 - cartopy

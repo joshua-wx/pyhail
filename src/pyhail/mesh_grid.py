@@ -8,7 +8,6 @@ import os
 
 import netCDF4
 import numpy as np
-from skimage import morphology
 
 from pyhail import common
 
@@ -32,7 +31,7 @@ def filter_small_objects(field, threshold=0, size=9):
     #apply intensity threshold to produce a mask
     masked_data = field > threshold
     #remove small objects
-    filtered_masked_data = morphology.remove_small_objects(masked_data, min_size=size)
+    filtered_masked_data = common.remove_small_objects(masked_data, min_size=size)
     #apply filter to field
     field[filtered_masked_data == 0] = threshold
 

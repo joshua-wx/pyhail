@@ -139,8 +139,8 @@ def main(
     DBZ_weights[DBZ_weights < 0] = 0
     DBZ_weights[DBZ_weights > 1] = 1
     #limit on DBZ
-    DBZ[DBZ] > 100 = 100
-    DBZ[DBZ] < -100 = -100
+    DBZ[DBZ > 100] = 100
+    DBZ[DBZ < -100] = -100
 
     E = (5.0e-6) * 10 ** (0.084 * DBZ) * DBZ_weights
 

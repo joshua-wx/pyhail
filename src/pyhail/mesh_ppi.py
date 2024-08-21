@@ -136,12 +136,20 @@ def main(
     DBZ_weights = (DBZ - Zl) / (Zu - Zl)
     DBZ_weights[DBZ <= Zl] = 0
     DBZ_weights[DBZ >= Zu] = 1
+    DBZ_weights[DBZ_weights < 0] = 0
+    DBZ_weights[DBZ_weights > 1] = 1
+    #limit on DBZ
+    DBZ[DBZ] > 100 = 100
+    DBZ[DBZ] < -100 = -100
+
     E = (5.0e-6) * 10 ** (0.084 * DBZ) * DBZ_weights
 
     # calc temperature based weighting function
     Wt = (Z - meltlayer) / (neg20layer - meltlayer)
     Wt[Z <= meltlayer] = 0
     Wt[Z >= neg20layer] = 1
+    Wt[Z < 0] = 0
+    Wt[Z > 1] = 1
 
     # calc severe hail index (element wise for integration)
     SHI_elements = Wt * E * dZ

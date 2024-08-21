@@ -159,6 +159,12 @@ def main(
     DBZ_weights = (dbz_grid - Zl) / (Zu - Zl)
     DBZ_weights[dbz_grid <= Zl] = 0
     DBZ_weights[dbz_grid >= Zu] = 1
+    DBZ_weights[DBZ_weights < 0] = 0
+    DBZ_weights[DBZ_weights > 1] = 1
+
+    #limit on dbz_grid
+    dbz_grid[dbz_grid] > 100 = 100
+    dbz_grid[dbz_grid] < -100 = -100
 
     # calc hail kenetic energy
     E = (5 * 10 ** -6) * 10 ** (0.084 * dbz_grid) * DBZ_weights

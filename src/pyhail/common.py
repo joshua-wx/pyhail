@@ -10,6 +10,11 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy import ndimage as ndi
 
+def safe_log(x, eps=1e-10):
+    result = np.where(x > eps, x, -10)
+    np.log(result, out=result, where=result > 0)
+    return result
+
 def _check_dtype_supported(ar):
     # Should use `issubdtype` for bool below, but there's a bug in numpy 1.7
     if not (ar.dtype == bool or np.issubdtype(ar.dtype, np.integer)):

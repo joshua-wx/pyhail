@@ -5,8 +5,8 @@ This algorthim was originally developed by Witt et al. 1998 and modified by Muri
 Joshua Soderholm - 15 August 2020
 """
 
-import time
 import numpy as np
+from pyhail import common
 
 def main(
     radar,
@@ -211,7 +211,7 @@ def main(
     WT = 57.5 * (meltlayer / 1000) - 121
 
     # calc probability of severe hail (POSH) (%)
-    POSH = 29 * np.log(SHI / WT) + 50
+    POSH = 29 * common.safe_log(SHI / WT) + 50
     POSH = np.real(POSH)
     POSH[POSH < 0] = 0
     POSH[POSH > 100] = 100

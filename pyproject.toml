@@ -10,14 +10,14 @@ authors = [
 ]
 description = "Python hail retreivals"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 keywords = ["radar", "weather", "meteorology", "calibration"]
-dependencies=["arm_pyart", "numpy", "netCDF4", "scipy", "numba"]
+dependencies=["numpy", "scipy", "numba"]
 
 [project.urls]
 "Homepage" = "https://github.com/joshua-wx/pyhail"

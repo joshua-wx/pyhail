@@ -9,7 +9,6 @@ from pyhail import common, hsda_mf
 
 from numba import jit
 import numpy as np
-import netCDF4
 
 def main(
     radar,

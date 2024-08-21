@@ -4,11 +4,7 @@ This algorthim was originally developed by Witt et al. 1998 doi:10.1175/1520-043
 
 Joshua Soderholm - 15 June 2020
 """
-import os
-
-import netCDF4
 import numpy as np
-
 from pyhail import common
 
 def filter_small_objects(field, threshold=0, size=9):
@@ -206,7 +202,7 @@ def main(
     WT = 57.5 * (meltlayer / 1000) - 121
 
     # calc probability of severe hail (POSH) (%)
-    POSH = 29 * np.log(SHI / WT) + 50
+    POSH = 29 * common.safe_log(SHI / WT) + 50
     POSH = np.real(POSH)
     POSH[POSH < 0] = 0
     POSH[POSH > 100] = 100

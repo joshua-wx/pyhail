@@ -148,8 +148,8 @@ def main(
     Wt = (Z - meltlayer) / (neg20layer - meltlayer)
     Wt[Z <= meltlayer] = 0
     Wt[Z >= neg20layer] = 1
-    Wt[Z < 0] = 0
-    Wt[Z > 1] = 1
+    Wt[Wt < 0] = 0
+    Wt[Wt > 1] = 1
 
     # calc severe hail index (element wise for integration)
     SHI_elements = Wt * E * dZ

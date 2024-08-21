@@ -173,8 +173,8 @@ def main(
     Wt = (alt_grid - meltlayer) / (neg20layer - meltlayer)
     Wt[alt_grid <= meltlayer] = 0
     Wt[alt_grid >= neg20layer] = 1
-    Wt[Z < 0] = 0
-    Wt[Z > 1] = 1
+    Wt[Wt < 0] = 0
+    Wt[Wt > 1] = 1
 
     # calc severe hail index
     dZ = alt_vec[1] - alt_vec[0]

@@ -14,7 +14,7 @@ import numpy as np
 from pyhail import common
 
 
-def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55, heights_fieldname='gate_z'):
+def main(data_dict, coords_dict, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55):
 
     """
     Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016.
@@ -22,8 +22,10 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
 
     Parameters:
     ===========
-    radar : object
-        Py-ART radar object.
+    data_dict : dictionary
+        Dictionary containing radar fields, each field contains a list of sweeps, where each sweep is an 2D array.
+    coords_dict: dictionary
+        Containing coordinate fields
     fz_level: int
         wet bulb freezing level (m)
     pressure: float (1,)
@@ -41,7 +43,7 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
         pyart field dictionary containing hAcc dataset
 
     """
-    Z = radar.fields[z_fname]["data"]
+    Z = data_dict[z_fname]
     if np.ma.is_masked(Z):
         Z = Z.filled(0)
     if hsda_fname is None:
@@ -49,21 +51,19 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
         hail_hca = Z >=  sp_reflectivity_threshold
     else:
         #use hsda to determine hail
-        hail_hca = radar.fields[hsda_fname]["data"]
+        hail_hca = data_dict[hsda_fname]
         if np.ma.is_masked(hail_hca):
             hail_hca = hail_hca.filled(0)
     #load mesh
-    mesh = radar.get_field(0, mesh_fname)
+    mesh = data_dict[mesh_fname]
     if np.ma.is_masked(mesh):
-        mesh = mesh.filled(0)
+        mesh = common.get_field(0, data_dict[mesh_fname], coords_dict)
 
     # calculate height
-    try:
-        heights = radar.fields[heights_fieldname]['data']
-    except:
-        rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-        rg, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
-        _, _, heights = common.antenna_to_cartesian(rg / 1000, azg, eleg)
+    rg = coords_dict['range']
+    rg, azg = np.meshgrid(rg, coords_dict['azimuth'])
+    rg, eleg = np.meshgrid(rg, coords_dict['elevation'])
+    _, _, heights = common.antenna_to_cartesian(rg / 1000, azg, eleg)
 
     n = 0.64  # packing density of monodisperse spheres (Kalina et al. 2016)
     ph = 900  # density of ice (kg m-3)
@@ -80,12 +80,11 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
 
     # get lowest valid IWC
     # insert sweeps into 3D array (el, az, rg)
-    el_sort_idx = np.argsort(radar.fixed_angle["data"])
-    az = radar.get_azimuth(0)
-    rg = radar.range["data"]
+    el_sort_idx = np.argsort(coords_dict['fixed_angle'])
+    az = common.get_field(0, coords_dict['azimuth'], coords_dict)
     IWC_3d = np.ma.zeros((len(el_sort_idx), len(az), len(rg)))
     for i, el_idx in enumerate(el_sort_idx):
-        IWC_3d[i, :, :] = IWC[radar.get_slice(el_idx)] 
+        IWC_3d[i, :, :] = IWC[common.get_slice(el_idx, coords_dict)] 
     # mask zero values
     IWC_3d_masked = np.ma.masked_array(IWC_3d, IWC_3d == 0)
     data_shape = IWC_3d_masked.shape
@@ -104,9 +103,9 @@ def main(radar, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflecti
     hAcc = (1 / epsilon) * (1 / (n * ph)) * IWC_lowest_valid * Vt
     hAcc = hAcc * 60  # convert cm/s to cm/min
 
-    # hAcc is only valid at the surface, to represent it in pyart radar objects, insert it into the first sweep
-    hAcc_field = np.zeros_like(radar.fields[z_fname]["data"])
-    hAcc_field[radar.get_slice(0)] = hAcc
+    # hAcc is only valid at the surface, to represent it in pyart format, insert it into the first sweep
+    hAcc_field = np.zeros_like(data_dict[z_fname])
+    hAcc_field[common.get_slice(0, coords_dict)] = hAcc
     hAcc_meta = {
         "data": hAcc_field,
         "units": "cm/min",

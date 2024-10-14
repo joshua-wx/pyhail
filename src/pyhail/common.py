@@ -10,6 +10,41 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy import ndimage as ndi
 
+
+def get_slice(sweep, coords_dict):
+    """Return a slice for selecting rays for a given sweep."""
+    start = coords_dict['sweep_start_ray_index'][sweep]
+    end = coords_dict['sweep_end_ray_index'][sweep]
+    return slice(start, end + 1)
+
+def get_field(sweep, data, coords_dict, copy=False):
+    """
+    Return the data for a given sweep.
+
+    Parameters
+    ----------
+    sweep : int
+        Sweep number to retrieve data for, 0 based.
+    data: ndarray
+        array containing the field data
+    copy : bool, optional
+        True to return a copy of the field.
+
+    Returns
+    -------
+    field : array
+        Array containing the field for a given sweep.
+
+    Copied from https://github.com/ARM-DOE/pyart/blob/main/pyart/core/radar.py 2024-10-14
+
+    """
+    s = get_slice(sweep, coords_dict)
+    field = data[s]
+    if copy:
+        return field.copy()
+    else:
+        return field
+
 def safe_log(x, eps=1e-10):
     result = np.where(x > eps, x, -10)
     np.log(result, out=result, where=result > 0)

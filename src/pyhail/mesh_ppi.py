@@ -9,7 +9,8 @@ import numpy as np
 from pyhail import common
 
 def main(
-    radar,
+    data_dict,
+    coords_dict,
     dbz_fname,
     levels,
     radar_band='C',
@@ -28,10 +29,12 @@ def main(
 
     Parameters
     ----------
-    radar : object
-        Py-ART radar object.
+    data_dict : dictionary
+        Dictionary containing radar fields, each field contains a list of sweeps, where each sweep is an 2D array.
+    coords_dict: dictionary
+        Containing coordinate fields
     dbz_fname : str
-        Name of reflectivity field in the radar object.
+        Name of reflectivity field in the radar data_dict.
     levels : list of length 2
         height above sea level (m) of the freezing level and -20C level (in any order)
     radar_band: str 
@@ -80,13 +83,13 @@ def main(
     neg20layer = np.max(levels)
 
     # Initialize dimensions
-    el = radar.fixed_angle["data"]
+    el = coords_dict['fixed_angle']
     sort_idx = list(np.argsort(el))
     el = el[sort_idx]
     n_ppi = len(el)
-    az = radar.get_azimuth(0)
+    az = common.get_field(0, coords_dict['azimuth'], coords_dict)
     n_rays = len(az)
-    rg = radar.range["data"]
+    rg = coords_dict['range']
     n_bins = len(rg)
 
     # require more than one sweep
@@ -103,17 +106,22 @@ def main(
     dZ = np.zeros_like(DBZ)
     SHI = np.zeros((len(az), len(rg)))
 
+    #build coords
+    rg_grid, az_grid = np.meshgrid(rg, coords_dict['azimuth'])
+    rg_grid, elv_grid = np.meshgrid(rg, coords_dict['elevation'])
+    x_ppi, y_ppi, z_ppi = common.antenna_to_cartesian(rg_grid / 1000, az_grid, elv_grid)
+
     # build 3D vol grids of reflectivity and Cartesian coords
     for i, el_idx in enumerate(sort_idx):
-        tmp_field = radar.get_field(el_idx, dbz_fname)
+        tmp_field = common.get_field(el_idx, data_dict[dbz_fname], coords_dict)
         if np.shape(tmp_field) == (len(az), len(rg)):
             DBZ[i, :, :] = tmp_field
         else:
             raise Exception("Corrupt volume, sweeps of different shapes detected")
-        x_ppi, y_ppi, z_ppi = radar.get_gate_x_y_z(el_idx)
-        X[i, :, :] = x_ppi
-        Y[i, :, :] = y_ppi
-        Z[i, :, :] = z_ppi + radar.altitude['data'][0] #units m at ASL required for NWP data
+        s = common.get_slice(el_idx, coords_dict)
+        X[i, :, :] = x_ppi[s]
+        Y[i, :, :] = y_ppi[s]
+        Z[i, :, :] = z_ppi[s] + coords_dict['altitude'] #units m at ASL required for NWP data
     # calculate ground range by ignoring Z
     ground_range = np.sqrt(X ** 2 + Y ** 2)
 
@@ -228,9 +236,9 @@ def main(
     
     # add grids to radar object
     # unpack E into cfradial representation
-    E_cfradial = np.zeros_like(radar.fields[dbz_fname]["data"])
+    E_cfradial = np.zeros_like(data_dict[dbz_fname])
     for i, j in enumerate(sort_idx):
-        E_cfradial[radar.get_slice(j)] = E[i, :, :]
+        E_cfradial[common.get_slice(j, coords_dict)] = E[i, :, :]
 
     ke_dict = {
         "data": E_cfradial,
@@ -242,8 +250,8 @@ def main(
     output_fields[ke_fname] = ke_dict
 
     # SHI,MESH and POSH are only valid at the surface, to represent it in pyart radar objects, insert it into the lowest sweep
-    SHI_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    SHI_field[radar.get_slice(0)] = SHI
+    SHI_field = np.zeros_like(data_dict[dbz_fname])
+    SHI_field[common.get_slice(0, coords_dict)] = SHI
     SHI_dict = {
         "data": SHI_field,
         "units": "Jm-1s-1",
@@ -254,8 +262,8 @@ def main(
     }
     output_fields[shi_fname] = SHI_dict
 
-    MESH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    MESH_field[radar.get_slice(0)] = MESH
+    MESH_field = np.zeros_like(data_dict[dbz_fname])
+    MESH_field[common.get_slice(0, coords_dict)] = MESH
     MESH_dict = {
         "data": MESH_field,
         "units": "mm",
@@ -265,8 +273,8 @@ def main(
     }
     output_fields[mesh_fname] = MESH_dict
     
-    POSH_field = np.zeros_like(radar.fields[dbz_fname]["data"])
-    POSH_field[radar.get_slice(0)] = POSH
+    POSH_field = np.zeros_like(data_dict[dbz_fname])
+    POSH_field[common.get_slice(0, coords_dict)] = POSH
     POSH_dict = {
         "data": POSH_field,
         "units": "%",

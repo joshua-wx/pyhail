@@ -5,22 +5,22 @@ This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 
 Joshua Soderholm - 15 June 2018
 """
 
-from pyhail import common, hsda_mf
-
+#from pyhail import common, hsda_mf
+import common, hsda_mf
+print('imports static in hsda')
 from numba import jit
 import numpy as np
 
 def main(
-    radar,
+    reflectivity_sweep,
+    differential_reflectivity_sweep,
+    cross_correlation_sweep,
+    classification_sweep,
+    gate_z_sweep,
     levels,
     hca_hail_idx,
     dzdr=0,
     q=None,
-    zh_name="corrected_reflectivity",
-    zdr_name="corrected_differential_reflectivity",
-    rhv_name="cross_correlation_ratio",
-    hca_name="radar_echo_classification",
-    heights_fieldname='gate_z'
 ):
 
     """
@@ -28,8 +28,14 @@ def main(
 
     Parameters:
     ===========
-    radar: struct
-        Py-ART radar object.
+    reflectivity_sweep: 2d ndarray
+        reflectivity data in an array with dimensions (azimuth, range)
+    differential_reflectivity_sweep: 2d ndarray
+        differential reflectivity data in an array with dimensions (azimuth, range)   
+    cross_correlation_sweep: 2d ndarray
+        cross correlation data in an array with dimensions (azimuth, range)   
+    classification_sweep: 2d ndarray
+        classification data in an array with dimensions (azimuth, range)   
     levels : list of length 2
         height above sea level (m) of the wet bulb freezing level and -25C level (in any order)
     hca_hail_idx: list
@@ -38,13 +44,11 @@ def main(
         offset for differential reflectivity
     q:
         quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
-    ####_name: string
-        field name from radar object
 
     Returns:
     ========
-    hsda: ndarray
-        hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50
+    hsda: 2d ndarray
+        hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50 with dimensions (azimuth, range)
 
     """
     # metadata
@@ -57,19 +61,14 @@ def main(
     wbt_minus25C = max(levels)
     wbt_0C = min(levels)
 
-    # load data
-    zh_cf = radar.fields[zh_name]["data"]
-    zdr_cf = radar.fields[zdr_name]["data"]
-    rhv_cf = radar.fields[rhv_name]["data"]
-    hca = radar.fields[hca_name]["data"]
-
     # check for any valid data
-    hail_mask = np.isin(hca, hca_hail_idx)
-    hsda = np.zeros(hca.shape, dtype=int)
+    hail_mask = np.isin(classification_sweep, hca_hail_idx)
+    hsda = np.zeros(classification_sweep.shape)
+    hsda[:] = np.nan #set all to nan, which is masked
     # skip processing if there's no valid hail pixels
     if not np.any(hail_mask):
         return {
-            "data": np.ma.masked_array(hsda, True, dtype=int),
+            "data": hsda,
             "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
             "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1",
@@ -77,23 +76,13 @@ def main(
         }
 
     # smooth radar data
-    zh_cf_smooth = common.smooth_ppi_rays(zh_cf, 5)
-    zdr_cf_smooth = common.smooth_ppi_rays(zdr_cf, 5)
-    rhv_cf_smooth = common.smooth_ppi_rays(rhv_cf, 5)
+    reflectivity_sweep_smooth = common.smooth_ppi_rays(reflectivity_sweep, 5)
+    differential_reflectivity_sweep_smooth = common.smooth_ppi_rays(differential_reflectivity_sweep, 5)
+    cross_correlation_sweep_smooth = common.smooth_ppi_rays(cross_correlation_sweep, 5)
     
     # generate quality vector if none exists
     if q is None:
-        q = {"zh":np.ones(hca.shape), "zdr":np.ones(hca.shape), "rhv":np.ones(hca.shape)}
-    
-    # calc pixel alt
-    try:
-        alt = radar.fields[heights_fieldname]['data']
-    except:
-        rg, azg = np.meshgrid(radar.range["data"], radar.azimuth["data"])
-        _, eleg = np.meshgrid(radar.range["data"], radar.elevation["data"])
-        _, _, alt_arl = common.antenna_to_cartesian(rg / 1000, azg, eleg)
-        # convert from ARL to ASL (required when using NWP products)
-        alt = alt_arl + radar.altitude['data'][0]
+        q = {"zh":np.ones(hsda.shape), "zdr":np.ones(hsda.shape), "rhv":np.ones(hsda.shape)}
     
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
@@ -106,12 +95,12 @@ def main(
         for i in np.nditer(hail_idx):
             
             #extract altitude
-            tmp_alt = alt[i]
+            tmp_alt = gate_z_sweep[i]
             
             #extract radar data
-            tmp_zh = zh_cf_smooth[i]
-            tmp_zdr = zdr_cf_smooth[i]
-            tmp_rhv = rhv_cf_smooth[i]
+            tmp_zh = reflectivity_sweep_smooth[i]
+            tmp_zdr = differential_reflectivity_sweep_smooth[i]
+            tmp_rhv = cross_correlation_sweep_smooth[i]
             
             #extract quality
             tmp_q_zh = q["zh"][i]
@@ -121,9 +110,9 @@ def main(
             
             #check for valid values
             if (
-                np.ma.is_masked(tmp_zh)
-                or np.ma.is_masked(tmp_zdr)
-                or np.ma.is_masked(tmp_rhv)
+                np.isnan(tmp_zh)
+                or np.isnan(tmp_zdr)
+                or np.isnan(tmp_rhv)
             ):
                 continue
             
@@ -153,18 +142,16 @@ def main(
             hsda[i] = pixel_hsda
         
     except Exception as e:
-        print("error in HSDA: ", e, 'time:', radar.time['units'])
-    
-        
-    # combine data masks
-    combined_mask = np.ones((radar.nrays, radar.ngates)).astype("bool")
-    for field in [zh_name, zdr_name, rhv_name]:
-        combined_mask *= ~radar.fields[field]["data"].mask
-    hsda_masked = np.ma.masked_array(hsda, ~combined_mask, dtype=int)
+        print("error in HSDA: ", e)
+         
+    # propagate nan as needed
+    hsda[np.isnan(reflectivity_sweep)] = np.nan
+    hsda[np.isnan(differential_reflectivity_sweep)] = np.nan
+    hsda[np.isnan(cross_correlation_sweep)] = np.nan
 
     # generate meta
     hsda_meta = {
-        "data": hsda_masked,
+        "data": hsda,
         "units": "NA",
         "long_name": "Hail Size Discrimination Algorithm",
         "comments": classes,

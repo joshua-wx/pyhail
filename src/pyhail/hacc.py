@@ -14,7 +14,12 @@ import numpy as np
 from pyhail import common
 
 
-def main(data_dict, coords_dict, fz_level, pressure, z_fname, hsda_fname, mesh_fname, sp_reflectivity_threshold=55):
+def main(reflectivity_sweep, 
+         hsda_sweep,
+         mesh_sweep,
+         coords_dict,
+         fz_level, pressure,
+         sp_reflectivity_threshold=55):
 
     """
     Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016.

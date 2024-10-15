@@ -7,43 +7,136 @@ Joshua Soderholm - 15 June 2018
 """
 
 import numpy as np
+import h5py
 from scipy.interpolate import interp1d
 from scipy import ndimage as ndi
 
-
-def get_slice(sweep, coords_dict):
-    """Return a slice for selecting rays for a given sweep."""
-    start = coords_dict['sweep_start_ray_index'][sweep]
-    end = coords_dict['sweep_end_ray_index'][sweep]
-    return slice(start, end + 1)
-
-def get_field(sweep, data, coords_dict, copy=False):
+def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
     """
-    Return the data for a given sweep.
+    Get the NCAR HCA data from the ODIMH5 file odim_ffn for the sweep
 
     Parameters
     ----------
-    sweep : int
-        Sweep number to retrieve data for, 0 based.
-    data: ndarray
-        array containing the field data
-    copy : bool, optional
-        True to return a copy of the field.
+    elevation : float
+        elevation angle of sweep to use
+    odim_ffn: string
+        filename of odimh5 file
+    array_shape: tuple
+        tuple of the data arrange shape with 2 values
+    skip_birdbath: boolean
+        flag to skip birdbath scans (90 deg elevation)
+    fillvalue: int
+        Fillvalue used for data array
 
     Returns
     -------
-    field : array
-        Array containing the field for a given sweep.
-
-    Copied from https://github.com/ARM-DOE/pyart/blob/main/pyart/core/radar.py 2024-10-14
+    hca_meta : dict
+        dictionary of ncar HCA for current sweep
 
     """
-    s = get_slice(sweep, coords_dict)
-    field = data[s]
-    if copy:
-        return field.copy()
-    else:
-        return field
+    #init
+    the_comments = (
+        "0: nodata; 1: Cloud; 2: Drizzle; 3: Light_Rain; 4: Moderate_Rain; 5: Heavy_Rain; "
+        + "6: Hail; 7: Rain_Hail_Mixture; 8: Graupel_Small_Hail; 9: Graupel_Rain; "
+        + "10: Dry_Snow; 11: Wet_Snow; 12: Ice_Crystals; 13: Irreg_Ice_Crystals; "
+        + "14: Supercooled_Liquid_Droplets; 15: Flying_Insects; 16: Second_Trip; 17: Ground_Clutter; "
+        + "18: misc1; 19: misc2"
+    )
+    hca = np.zeros(array_shape)
+    hca[:] = np.nan
+    hca_meta = {
+        "data": hca,
+        "units": "NA",
+        "long_name": "NCAR Hydrometeor classification",
+        "description:": "NCAR Hydrometeor classification developed by Vivekanandan et al. (1999) doi:10.1175/1520-0477(1999)080<0381:CMRUSB>2.0.CO;2",
+        "comments": the_comments,
+    }
+    with h5py.File(odim_ffn, "r") as f:
+        h5keys = list(f.keys())
+        # init
+        if "how" in h5keys:
+            h5keys.remove("how")
+        if "what" in h5keys:
+            h5keys.remove("what")
+        if "where" in h5keys:
+            h5keys.remove("where")
+        n_keys = len(h5keys)
+        for i in range(n_keys):
+            #read dataset
+            ds_name = "dataset" + str(i + 1)
+            #skip until required elevation angle is found
+            if f[ds_name]["where"].attrs["elangle"] != elevation:
+                continue
+            #skip if birdbath
+            if f[ds_name]["where"].attrs["elangle"] == 90 and skip_birdbath:
+                return hca_meta
+            #read pid data into output dictionary
+            hca_data = np.array(f[ds_name]["quality1"]["data"]).astype(float)
+            hca_data[hca_data == -1] = np.nan
+            hca_meta['data'] = hca_data
+            break
+
+
+    return hca_meta
+
+
+def add_pyodim_sweep_metadata(sweep_ds, variable_name, metadata_dict, skip_keys=['data']):
+    """
+    For each key in metadata_dict, a new attribute is created in sweep_ds with the key value 
+
+    Parameters
+    ----------
+    sweep_ds : xarray data
+        sweep xarray dataset
+    variable_name: string
+        name of variable in sweep_ds to update
+    metadata_dict: dict
+        dictionary containing keys and values to add into sweep_ds
+    skip_keys: list of strings
+        names of keys to skip in metadata_dict
+
+    Returns
+    -------
+    sweep_ds : xarray data
+        sweep xarray dataset
+
+    """
+
+    for key_name in metadata_dict.keys():
+        if key_name in skip_keys:
+            continue
+        else:
+            sweep_ds[variable_name].assign_attrs(key_name=metadata_dict[key_name])
+    return sweep_ds
+
+def add_pyart_metadata(radar, variable_name, metadata_dict, skip_keys=['data']):
+    """
+    For each key in metadata_dict, a new attribute is created in sweep_ds with the key value 
+
+    Parameters
+    ----------
+    radar : class
+        pyart radar object
+    variable_name: string
+        name of variable in sweep_ds to update
+    metadata_dict: dict
+        dictionary containing keys and values to add into sweep_ds
+    skip_keys: list of strings
+        names of keys to skip in metadata_dict
+
+    Returns
+    -------
+    radar : class
+        pyart radar object
+
+    """
+
+    for key_name in metadata_dict.keys():
+        if key_name in skip_keys:
+            continue
+        else:
+            radar.fields[variable_name][key_name]=metadata_dict[key_name]
+    return radar
 
 def safe_log(x, eps=1e-10):
     result = np.where(x > eps, x, -10)
@@ -293,40 +386,13 @@ def smooth_ppi_rays(ppi_data, n):
     # calculate offset from edges
     offset = int((n - 1) / 2)
     # init ppi cumulative sum with zero values in first row
-    zero_mat = np.ma.zeros((ppi_data.shape[0], 1))
-    ppi_cs = np.ma.hstack((zero_mat, ppi_data))
+    zero_mat = np.zeros((ppi_data.shape[0], 1))
+    ppi_cs = np.hstack((zero_mat, ppi_data))
     # calculate cumulative sum
-    ppi_cs = ppi_cs.cumsum(axis=1)
+    ppi_cs = np.nancumsum(ppi_cs, axis=1)
     # calculate simple moving average
     ppi_sma = (ppi_cs[:, n:] - ppi_cs[:, :-n]) / float(n)
     # stack data in output with zeros
-    out = np.ma.hstack((ppi_data[:, :offset], ppi_sma, ppi_data[:, -offset:]))
+    out = np.hstack((ppi_data[:, :offset], ppi_sma, ppi_data[:, -offset:]))
 
     return out
-
-
-def filter_small_objects(field, threshold=0, size=9):
-
-    """run a filter to remove small objects
-
-     Parameters:
-    ===========
-    field: ndarray (n,m)
-        2D array to filter
-    threshold: float
-        intensity threshold to run small objects filter
-    size: int
-        area size (number of pixels) threshold to remove small objects
-    Returns:
-    ========
-    field: narray (n,m)
-    
-    """
-    #apply intensity threshold to produce a mask
-    masked_data = field > threshold
-    #remove small objects
-    filtered_masked_data = remove_small_objects(masked_data, min_size=size)
-    #apply filter to field
-    field[filtered_masked_data == 0] = threshold
-
-    return field

@@ -11,15 +11,17 @@ Joshua Soderholm - 15 June 2018
 """
 
 
-def main(radar_dict):
+def main(reflectivity_sweep, differential_reflectivity_sweep):
     """
     Hail Differential Reflectity Retrieval
     Required DBZH and ZDR fields
 
     Parameters:
     ===========
-    radar_dict: dictionary
-        contains two entries, dbz and zdr, which contain numpy arrays of their respective fields.
+    reflectivity_sweep: 2d ndarray
+        reflectivity data in an array with dimensions (azimuth, range)
+    reflectivity_sweep: 2d ndarray
+        differential reflectivity data in an array with dimensions (azimuth, range)    
     Returns:
     ========
     hdr_meta: dict
@@ -28,18 +30,15 @@ def main(radar_dict):
         pyary field dictionary containing HDR size dataset
 
     """
-    # extract fields
-    dbz = radar_dict["dbz"]
-    zdr = radar_dict["zdr"]
 
     # calculate hdr
     # apply primary function
-    zdr_fun = 19 * zdr + 27
+    zdr_fun = 19 * differential_reflectivity_sweep + 27
     # set limits based on zdr
-    zdr_fun[zdr <= 0] = 27
-    zdr_fun[zdr > 1.74] = 60
+    zdr_fun[differential_reflectivity_sweep <= 0] = 27
+    zdr_fun[differential_reflectivity_sweep > 1.74] = 60
     # apply to zhh
-    hdr = dbz - zdr_fun
+    hdr = reflectivity_sweep - zdr_fun
 
     # use polynomial from Depue et al. 2009 to transform dB into mm
     hdr_size = 0.0284 * (hdr ** 2) - 0.366 * hdr + 11.69
@@ -50,7 +49,9 @@ def main(radar_dict):
         "data": hdr,
         "units": "dB",
         "long_name": "Hail Differential Reflectivity",
-        "description": "Hail Differential Reflectivity developed by Aydin and Zhao (1990) doi:10.1109/TGRS.1990.572906"
+        "description": "Hail Differential Reflectivity developed by Aydin and Zhao (1990) doi:10.1109/TGRS.1990.572906",
+        "comments": ""
+
     }
 
     hdr_size_meta = {

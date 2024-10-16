@@ -73,7 +73,8 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
             #read pid data into output dictionary
             hca_data = np.array(f[ds_name]["quality1"]["data"]).astype(float)
             hca_data[hca_data == -1] = np.nan
-            hca_meta['data'] = hca_data
+            shape = hca_data.shape
+            hca_meta['data'][: shape[0], : shape[1]] = hca_data
             break
 
 
@@ -282,7 +283,7 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     ----------
     .. [1] Doviak and Zrnic, Doppler Radar and Weather Observations, Second
         Edition, 1993, p. 21.
-    """
+    """        
     theta_e = elevations * np.pi / 180.0  # elevation angle in radians.
     theta_a = azimuths * np.pi / 180.0  # azimuth angle in radians.
     R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.

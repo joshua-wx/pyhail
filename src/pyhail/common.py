@@ -256,7 +256,7 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     Parameters
     ----------
     ranges : array
-        Distances to the center of the radar gates (bins) in kilometers.
+        Distances to the center of the radar gates (bins) in meters.
     azimuths : array
         Azimuth angle of the radar in degrees.
     elevations : array
@@ -287,8 +287,8 @@ def antenna_to_cartesian(ranges, azimuths, elevations):
     theta_e = elevations * np.pi / 180.0  # elevation angle in radians.
     theta_a = azimuths * np.pi / 180.0  # azimuth angle in radians.
     R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
-    r = ranges * 1000.0  # distances to gates in meters.
-
+    r = ranges
+    
     z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
     s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
     x = s * np.sin(theta_a)

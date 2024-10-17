@@ -35,7 +35,9 @@ def main(
     cross_correlation_sweep: 2d ndarray
         cross correlation data in an array with dimensions (azimuth, range)   
     classification_sweep: 2d ndarray
-        classification data in an array with dimensions (azimuth, range)   
+        classification data in an array with dimensions (azimuth, range)  
+    gate_z_sweep: 2d ndarray
+        altitude above sea level (m) of each gate
     levels : list of length 2
         height above sea level (m) of the wet bulb freezing level and -25C level (in any order)
     hca_hail_idx: list

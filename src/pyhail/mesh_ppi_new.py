@@ -9,6 +9,20 @@ import numpy as np
 print('imports static in mesh')
 import common
 
+def integrate_shi(column_shi_elements, column_z):
+    shi = 0
+    n_ppi = len(column_shi_elements)
+    for i in range(n_ppi):
+        #calculate dz for use in shi calc
+        if i == 0:
+            dz = column_z[i + 1] - column_z[i]
+        if (i != 0) & (i != n_ppi - 1):
+            dz = (column_z[i + 1] - column_z[i - 1]) / 2
+        if i == n_ppi - 1:
+            dz = column_z[i] - column_z[i - 1]
+        shi += column_shi_elements[i]*dz
+    return shi
+
 def main(
     reflectivity_dataset,
     elevation_dataset,
@@ -86,41 +100,32 @@ def main(
     elif len(elevation_dataset) < 10:
         raise Warning("Number of sweep is less than 10 and not recommended for MESH calculations")
     
-    # Initialize sweeps
+    # Initialize sweep coords
     x_dataset = []
     y_dataset = []
     z_dataset = []
-    dz_dataset = []
-    hail_ke_dataset = []
-    SHI_elements_dataset = []
-    valid_dataset = []
     hail_refl_correction_description = ''
     for i in range(n_ppi):
         #calculate cartesian coordinates
-        elevation_array = np.zeros_like(range_dataset[i]) + elevation_dataset[i]
         range_grid, azimuth_grid = np.meshgrid(range_dataset[i], azimuth_dataset[i])
-        range_grid, elevation_grid = np.meshgrid(range_dataset[i], elevation_array)
-        
+        elevation_grid = np.zeros_like(range_grid) + elevation_dataset[i]
         x, y, z = common.antenna_to_cartesian(range_grid,
                                               azimuth_grid,
                                               elevation_grid)
         x_dataset.append(x)
         y_dataset.append(y)
         z_dataset.append(z + radar_altitude)
-        # calculate shi ground range by ignoring Z
-        ground_range = np.sqrt(x_dataset[0] ** 2 + y_dataset[0] ** 2)
         #apply C band correction
         if radar_band == 'C' and correct_cband_refl:
             reflectivity_dataset[i] = reflectivity_dataset[i] * 1.113 - 3.929
             hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
-        #calculate dz for use in shi
-        if i == 0:
-            dz = z[i + 1, :, :] - z[i, :, :]
-        if (i != 0) & (i != n_ppi - 1):
-            dz = (z[i + 1, :, :] - z[i - 1, :, :]) / 2
-        if i == n_ppi - 1:
-            dz = z[i, :, :] - z[i - 1, :, :]
-        dz_dataset.append(dz)
+    
+    #calculate SHI elements
+    # dz_dataset = []
+    hail_ke_dataset = []
+    SHI_elements_dataset = []
+    valid_dataset = []
+    for i in range(n_ppi):
         # calc weights for hail kenetic energy
         reflectivity_weights = (reflectivity_dataset[i] - Zl) / (Zu - Zl)
         reflectivity_weights[reflectivity_dataset[i] <= Zl] = 0
@@ -134,54 +139,61 @@ def main(
         hail_ke = (5.0e-6) * 10 ** (0.084 * reflectivity_dataset[i]) * reflectivity_weights
         hail_ke_dataset.append(hail_ke)
         # calc temperature based weighting function
-        Wt = (z - meltlayer) / (neg20layer - meltlayer)
-        Wt[z <= meltlayer] = 0
-        Wt[z >= neg20layer] = 1
+        Wt = (z_dataset[i] - meltlayer) / (neg20layer - meltlayer)
+        Wt[z_dataset[i] <= meltlayer] = 0
+        Wt[z_dataset[i] >= neg20layer] = 1
         Wt[Wt < 0] = 0
         Wt[Wt > 1] = 1
         # calc severe hail index (element wise for integration)
-        SHI_elements = Wt * hail_ke * dz
-        SHI_elements_dataset.append(SHI_elements)
+        SHI_elements = Wt * hail_ke # * dz
         # calc valid mask
+        # calculate shi ground range by ignoring Z
+        ground_range = np.sqrt(x_dataset[0] ** 2 + y_dataset[0] ** 2)
         valid = (
             (Wt > 0)
             & (hail_ke > 0)
-            & (ground_range > min_range * 1000)
-            & (ground_range < max_range * 1000)
         )
-        valid_dataset.append(valid)
+        #use valid to mask SHI_elements
+        SHI_elements = SHI_elements*valid
+        SHI_elements_dataset.append(SHI_elements)
 
     #calculate shi on lowest sweep coordinates
     shi = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])))
     shi[:] = np.nan
-
+    sweep0_nrays = len(azimuth_dataset[0])
+    sweep0_nbins = len(range_dataset[0])
     # loop through each ray in the lowest sweep
-    for az_idx, az_value in range(azimuth_dataset[0]):
+    for az_idx in range(sweep0_nrays):
+        print(az_idx)
         # loop through each range bin for the ray
-        for rg_idx, rg_value in range(range_dataset[0]):
-            #init shi value
-            if valid_dataset[0][az_idx, rg_idx]:
-                shi_value = SHI_elements[0][az_idx, rg_idx]
-            else:
-                shi_value = 0
-            #init x,y ground coods
-            x_ground_coord = x_dataset[0][az_idx, rg_idx]
-            y_ground_coord = y_dataset[0][az_idx, rg_idx]
+        for rg_idx in range(sweep0_nbins):
+            #check if sweep0 (lowest) range is outside of limits
+            x_sweep0_coord = x_dataset[0][az_idx, rg_idx]
+            y_sweep0_coord = y_dataset[0][az_idx, rg_idx]
+            sweep0_range = np.sqrt(x_sweep0_coord ** 2 + y_sweep0_coord ** 2)
+            if sweep0_range < min_range * 1000 or sweep0_range > max_range * 1000:
+                continue
+            #init shi elements
+            column_shi_elements = [SHI_elements_dataset[0][az_idx, rg_idx]]
+            column_z = [z_dataset[0][az_idx, rg_idx]]
             #loop through other sweeps above ground
             for sweep_idx in range(1, n_ppi, 1):
-                # find closest point to ground location
-                closest_idx = np.unravel_index(np.argmin((x_ground_coord-x_dataset[sweep_idx])**2 + (y_ground_coord-y_dataset[sweep_idx])**2),
+                #print(az_idx, rg_idx, sweep_idx)
+
+                # for this search, what not working in x,y
+                # what about first finding the nearest azimuth index 1D
+                # then finding the nearest ground range (new variable) 1D
+                
+                # find closest point to sweep0 (lowest) location
+                closest_idx = np.unravel_index(np.argmin(np.sqrt((x_sweep0_coord-x_dataset[sweep_idx])**2 + (y_sweep0_coord-y_dataset[sweep_idx])**2)),
                                                x_dataset[sweep_idx].shape)
-                # skip invalid
-                if not valid_dataset[sweep_idx][closest_idx]:
-                    continue
-                # skip empty values
-                if SHI_elements_dataset[sweep_idx][closest_idx] == 0:
-                    continue
-                shi_value += SHI_elements_dataset[sweep_idx][closest_idx]
+                #append
+                column_shi_elements.append(SHI_elements_dataset[sweep_idx][closest_idx])
+                column_z.append(z_dataset[sweep_idx][closest_idx])
             # insert into SHI if there's a valid value
-            if shi_value > 0:
-                shi[az_idx, rg_idx] = 0.1 * shi
+            if np.nanmax(column_shi_elements) > 0:
+                
+                shi[az_idx, rg_idx] = 0.1 * integrate_shi(column_shi_elements,column_z)
 
     # calc maximum estimated severe hail (mm)
     if (

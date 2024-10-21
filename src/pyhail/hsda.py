@@ -34,7 +34,7 @@ def pyodim(datasets,
             {radar_classification_fname: (("azimuth", "range"), hca_meta['data']) })
         datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], radar_classification_fname, hca_meta)
 
-        hsda_meta = main(datasets[sweep][reflectivity_fname].values,
+        hsda_meta = hsda(datasets[sweep][reflectivity_fname].values,
                             datasets[sweep][differential_reflectivity_fname].values,
                             datasets[sweep][cross_correlation_ratio_fname].values,
                             datasets[sweep][radar_classification_fname].values,
@@ -76,7 +76,7 @@ def pyart(radar,
         radar.fields[radar_classification_fname]['data'][radar.get_slice(sweep)] = hca_meta['data']
         _, _, gate_z = radar.get_gate_x_y_z(sweep)
         radar_altitude = radar.altitude['data'][0]
-        hsda_meta = main(radar.get_field(sweep, reflectivity_fname).data,
+        hsda_meta = hsda(radar.get_field(sweep, reflectivity_fname).data,
                             radar.get_field(sweep, differential_reflectivity_fname).data,
                             radar.get_field(sweep, cross_correlation_ratio_fname).data,
                             radar.get_field(sweep, radar_classification_fname).data,
@@ -124,7 +124,7 @@ def _smooth_ppi_rays(ppi_data, n):
 
     return out
 
-def main(
+def hsda(
     reflectivity_sweep,
     differential_reflectivity_sweep,
     cross_correlation_sweep,

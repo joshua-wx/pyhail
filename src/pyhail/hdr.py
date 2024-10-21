@@ -26,7 +26,7 @@ def pyart(radar, reflectivity_fname, differential_reflectivity_fname, hdr_fname=
 
     #process sweeps
     for sweep in range(radar.nsweeps):
-        hdr_meta, hdr_size_meta = main(radar.get_field(sweep, reflectivity_fname).data, 
+        hdr_meta, hdr_size_meta = hdr(radar.get_field(sweep, reflectivity_fname).data, 
                                        radar.get_field(sweep, differential_reflectivity_fname).data)
         radar.fields[hdr_fname]['data'][radar.get_slice(sweep)] = hdr_meta['data']
         radar.fields[hdr_size_fname]['data'][radar.get_slice(sweep)] = hdr_size_meta['data']
@@ -41,7 +41,7 @@ def pyodim(datasets, reflectivity_fname, differential_reflectivity_fname, hdr_fn
 
     #for each sweep
     for sweep in range(len(datasets)):
-        hdr_meta, hdr_size_meta = main(datasets[sweep][reflectivity_fname].values,
+        hdr_meta, hdr_size_meta = hdr(datasets[sweep][reflectivity_fname].values,
                                        datasets[sweep][differential_reflectivity_fname].values)
         #add new fields
         datasets[sweep] = datasets[sweep].merge(
@@ -54,7 +54,7 @@ def pyodim(datasets, reflectivity_fname, differential_reflectivity_fname, hdr_fn
 
     return datasets
 
-def main(reflectivity_sweep, differential_reflectivity_sweep):
+def hdr(reflectivity_sweep, differential_reflectivity_sweep):
     """
     Hail Differential Reflectity Retrieval
     Required DBZH and ZDR fields

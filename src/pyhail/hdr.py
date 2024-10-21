@@ -10,6 +10,49 @@ Depue, T. K., Kennedy, P. C., & Rutledge, S. A. (2007). Performance of the hail 
 Joshua Soderholm - 15 June 2018
 """
 
+import common
+import numpy as np
+
+def pyart(radar, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+
+    #init radar fields
+    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
+                     'units':'',
+                     'long_name': '',
+                     'description': '',
+                     'comments': ''}
+    radar.add_field(hdr_fname, empty_radar_field)
+    radar.add_field(hdr_size_fname, empty_radar_field)
+
+    #process sweeps
+    for sweep in range(radar.nsweeps):
+        hdr_meta, hdr_size_meta = main(radar.get_field(sweep, reflectivity_fname).data, 
+                                       radar.get_field(sweep, differential_reflectivity_fname).data)
+        radar.fields[hdr_fname]['data'][radar.get_slice(sweep)] = hdr_meta['data']
+        radar.fields[hdr_size_fname]['data'][radar.get_slice(sweep)] = hdr_size_meta['data']
+    
+    #add metadata
+    radar = common.add_pyart_metadata(radar, hdr_fname, hdr_meta)
+    radar = common.add_pyart_metadata(radar, hdr_size_fname, hdr_size_meta)
+
+    return radar
+
+def pyodim(datasets, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+
+    #for each sweep
+    for sweep in range(len(datasets)):
+        hdr_meta, hdr_size_meta = main(datasets[sweep][reflectivity_fname].values,
+                                       datasets[sweep][differential_reflectivity_fname].values)
+        #add new fields
+        datasets[sweep] = datasets[sweep].merge(
+            {hdr_fname: (("azimuth", "range"), hdr_meta['data']),
+            hdr_size_fname: (("azimuth", "range"), hdr_size_meta['data']) })
+
+        #update metadata for new fields
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hdr_fname, hdr_meta)
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hdr_size_fname, hdr_meta)
+
+    return datasets
 
 def main(reflectivity_sweep, differential_reflectivity_sweep):
     """

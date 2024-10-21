@@ -6,10 +6,91 @@ Joshua Soderholm - 15 June 2018
 """
 
 #from pyhail import hsda_mf
-import hsda_mf
+import hsda_mf, common
 print('imports static in hsda')
 from numba import jit
 import numpy as np
+
+def pyodim(datasets, 
+          filename, 
+          reflectivity_fname, 
+          differential_reflectivity_fname, 
+          cross_correlation_ratio_fname, 
+          radar_classification_fname, 
+          levels, 
+          hca_hail_idx,
+          z_fname = 'z',
+          hsda_fname = 'hsda',
+          dzdr=0,
+          q=None):
+
+    for sweep in range(len(datasets)):
+        #add HCA data
+        hca_meta = common.get_odim_ncar_hca(datasets[sweep]['elevation'].data[0],
+                                             filename, 
+                                             datasets[sweep][reflectivity_fname].shape, 
+                                             skip_birdbath=True)
+        datasets[sweep] = datasets[sweep].merge(
+            {radar_classification_fname: (("azimuth", "range"), hca_meta['data']) })
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], radar_classification_fname, hca_meta)
+
+        hsda_meta = main(datasets[sweep][reflectivity_fname].values,
+                            datasets[sweep][differential_reflectivity_fname].values,
+                            datasets[sweep][cross_correlation_ratio_fname].values,
+                            datasets[sweep][radar_classification_fname].values,
+                            datasets[sweep][z_fname].values + datasets[0].attrs['height'],
+                            levels,
+                            hca_hail_idx,
+                            dzdr,
+                            q)
+
+        #add new fields
+        datasets[sweep] = datasets[sweep].merge(
+            {hsda_fname: (("azimuth", "range"), hsda_meta['data']) })
+        #update metadata for new fields
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hsda_fname, hsda_meta)
+
+    return datasets
+
+def pyart(radar, 
+          filename, 
+          reflectivity_fname, 
+          differential_reflectivity_fname, 
+          cross_correlation_ratio_fname, 
+          radar_classification_fname, 
+          levels, 
+          hca_hail_idx,
+          hsda_fname = 'hsda',
+          dzdr=0,
+          q=None):
+    """
+    levels : list of length 2
+        height above sea level (m) of the wet bulb freezing level and -25C level (in any order)
+    hca_hail_idx: list
+        index of hail related fields in classification to apply HSDA
+    """
+    for sweep in range(radar.nsweeps):
+        hca_meta = common.get_odim_ncar_hca(radar.fixed_angle['data'][sweep],
+                                            filename,
+                                            radar.get_field(sweep, reflectivity_fname).shape, skip_birdbath=True)
+        radar.fields[radar_classification_fname]['data'][radar.get_slice(sweep)] = hca_meta['data']
+        _, _, gate_z = radar.get_gate_x_y_z(sweep)
+        radar_altitude = radar.altitude['data'][0]
+        hsda_meta = main(radar.get_field(sweep, reflectivity_fname).data,
+                            radar.get_field(sweep, differential_reflectivity_fname).data,
+                            radar.get_field(sweep, cross_correlation_ratio_fname).data,
+                            radar.get_field(sweep, radar_classification_fname).data,
+                            gate_z + radar_altitude,
+                            levels,
+                            hca_hail_idx,
+                            dzdr,
+                            q)
+        radar.fields[hsda_fname]['data'][radar.get_slice(sweep)] = hsda_meta['data']
+
+    #add metadata
+    radar.fields[hsda_fname]['data'][radar.get_slice(sweep)] = hsda_meta['data']
+
+    return radar
 
 def _smooth_ppi_rays(ppi_data, n):
     """

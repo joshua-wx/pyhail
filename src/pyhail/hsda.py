@@ -5,11 +5,43 @@ This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 
 Joshua Soderholm - 15 June 2018
 """
 
-#from pyhail import common, hsda_mf
-import common, hsda_mf
+#from pyhail import hsda_mf
+import hsda_mf
 print('imports static in hsda')
 from numba import jit
 import numpy as np
+
+def _smooth_ppi_rays(ppi_data, n):
+    """
+    Apply a smoothing average filter of size n over ppi_data
+    (rays are columns).
+
+    Parameters
+    ----------
+    ppi_data : ndarray
+        PPI data.
+    n : float
+        Smoothing kernel size (must be odd).
+
+    Returns
+    -------
+    out : ndarray
+        Ray smoothed ppi.
+
+    """
+    # calculate offset from edges
+    offset = int((n - 1) / 2)
+    # init ppi cumulative sum with zero values in first row
+    zero_mat = np.zeros((ppi_data.shape[0], 1))
+    ppi_cs = np.hstack((zero_mat, ppi_data))
+    # calculate cumulative sum
+    ppi_cs = np.nancumsum(ppi_cs, axis=1)
+    # calculate simple moving average
+    ppi_sma = (ppi_cs[:, n:] - ppi_cs[:, :-n]) / float(n)
+    # stack data in output with zeros
+    out = np.hstack((ppi_data[:, :offset], ppi_sma, ppi_data[:, -offset:]))
+
+    return out
 
 def main(
     reflectivity_sweep,
@@ -78,9 +110,9 @@ def main(
         }
 
     # smooth radar data
-    reflectivity_sweep_smooth = common.smooth_ppi_rays(reflectivity_sweep, 5)
-    differential_reflectivity_sweep_smooth = common.smooth_ppi_rays(differential_reflectivity_sweep, 5)
-    cross_correlation_sweep_smooth = common.smooth_ppi_rays(cross_correlation_sweep, 5)
+    reflectivity_sweep_smooth = _smooth_ppi_rays(reflectivity_sweep, 5)
+    differential_reflectivity_sweep_smooth = _smooth_ppi_rays(differential_reflectivity_sweep, 5)
+    cross_correlation_sweep_smooth = _smooth_ppi_rays(cross_correlation_sweep, 5)
     
     # generate quality vector if none exists
     if q is None:

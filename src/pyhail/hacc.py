@@ -11,7 +11,7 @@ Joshua Soderholm - 12 August 2021
 """
 
 import numpy as np
-from pyhail import common
+import common
 
 
 def main(reflectivity_sweep, 

@@ -9,6 +9,133 @@ import numpy as np
 print('imports static in mesh')
 import common
 
+def pyart(radar,
+            temp_levels,
+            reflectivity_fname,
+            ke_fname='ke',
+            shi_fname='shi',
+            mesh_fname='mesh',
+            posh_fname='posh',
+            birdbath_elevation=90):
+    #init radar fields
+    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
+                     'units':'',
+                     'long_name': '',
+                     'description': '',
+                     'comments': ''}
+    radar.add_field(ke_fname, empty_radar_field)
+    radar.add_field(shi_fname, empty_radar_field)
+    radar.add_field(mesh_fname, empty_radar_field)
+    radar.add_field(posh_fname, empty_radar_field)
+    #mesh
+    #build datasets
+    reflectivity_dataset = []
+    elevation_dataset = []
+    azimuth_dataset = []
+    range_dataset = []
+    elevation_dataset = []
+    radar_altitude = radar.altitude['data'][0]
+    print(radar_altitude)
+    for sweep_idx in range(radar.nsweeps):
+        #filter out birdbath scans
+        if radar.fixed_angle['data'][sweep_idx] < birdbath_elevation:
+            reflectivity_dataset.append(radar.get_field(sweep_idx, reflectivity_fname).data)
+            azimuth_dataset.append(radar.get_azimuth(sweep_idx))
+            range_dataset.append(radar.range['data'])
+            elevation_dataset.append(radar.fixed_angle['data'][sweep_idx])
+    #run retrieval
+    ke_dict, shi_dict, mesh_dict, posh_dict = main(reflectivity_dataset,
+                                                        elevation_dataset,
+                                                        azimuth_dataset,
+                                                        range_dataset,
+                                                        radar_altitude,
+                                                        temp_levels)
+
+    #hacc
+    sweep0_idx = np.argmin(elevation_dataset)
+
+    #update data
+    sweep_idx_offset = 0
+    for sweep_idx in range(radar.nsweeps):
+        if radar.fixed_angle['data'][sweep_idx] == birdbath_elevation:
+            radar.fields['ke']['data'][radar.get_slice(sweep_idx)] = np.zeros_like(radar.get_field(sweep_idx, reflectivity_fname).data)
+            sweep_idx_offset = 1
+            continue
+        adjust_idx = sweep_idx_offset - sweep_idx
+        radar.fields['ke']['data'][radar.get_slice(sweep_idx)] = ke_dict['data'][adjust_idx]
+
+    radar.fields['shi']['data'][radar.get_slice(sweep0_idx)] = shi_dict['data']
+    radar.fields['mesh']['data'][radar.get_slice(sweep0_idx)] = mesh_dict['data']
+    radar.fields['posh']['data'][radar.get_slice(sweep0_idx)] = posh_dict['data']
+
+    #update metadata
+    radar = common.add_pyart_metadata(radar, 'ke', ke_dict)
+    radar = common.add_pyart_metadata(radar, 'shi', shi_dict)
+    radar = common.add_pyart_metadata(radar, 'mesh', mesh_dict)
+    radar = common.add_pyart_metadata(radar, 'posh', posh_dict)
+
+    return radar
+
+def pyodim(radar_datasets,
+           reflectivity_fname,
+           temp_levels,
+           radar_height_fname='height',
+           elevation_fname='elevation',
+           azimuth_fname='azimuth',
+           range_fname='range',
+           ke_fname='ke',
+           shi_fname='shi',
+           mesh_fname='mesh',
+           posh_fname='posh',
+           birdbath_elevation=90):
+    #build datasets
+    reflectivity_dataset = []
+    elevation_dataset = []
+    azimuth_dataset = []
+    range_dataset = []
+    radar_altitude = radar_datasets[0].attrs[radar_height_fname]
+    n_ppi = len(radar_datasets)
+    for sweep_idx in range(n_ppi):
+        elv_value = radar_datasets[sweep_idx][elevation_fname].data[0]
+        #filter out birdbath scans
+        if elv_value < birdbath_elevation:
+            reflectivity_dataset.append(radar_datasets[sweep_idx][reflectivity_fname].values)
+            elevation_dataset.append(radar_datasets[sweep_idx][elevation_fname].data[0])
+            azimuth_dataset.append(radar_datasets[sweep_idx][azimuth_fname].values)
+            range_dataset.append(radar_datasets[sweep_idx][range_fname].values)
+    #run retrieval
+    ke_dict, shi_dict, mesh_dict, posh_dict = main(reflectivity_dataset,
+                                                        elevation_dataset,
+                                                        azimuth_dataset,
+                                                        range_dataset,
+                                                        radar_altitude,
+                                                        temp_levels)
+    
+    #add 2D fields and metadata
+    sweep0_idx = np.argmin(elevation_dataset)
+    radar_datasets[sweep0_idx] = radar_datasets[0].merge( {
+            shi_fname: (("azimuth", "range"), shi_dict['data']),
+            mesh_fname: (("azimuth", "range"), mesh_dict['data']),
+            posh_fname: (("azimuth", "range"), posh_dict['data']) })
+    radar_datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep0_idx], shi_fname, shi_dict)
+    radar_datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep0_idx], mesh_fname, mesh_dict)
+    radar_datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep0_idx], posh_fname, posh_dict)
+    
+    #add 3D field and metadata
+    sweep_idx_offset = 0
+    for sweep_idx in range(len(radar_datasets)):
+        if radar_datasets[sweep_idx][elevation_fname].data[0] == birdbath_elevation:
+            #add dummy data for birdbath scans, as ke is not calculated for this.
+            radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
+                {ke_fname: (("azimuth", "range"), np.zeros_like(radar_datasets[sweep_idx][reflectivity_fname].values)) })
+            sweep_idx_offset = 1
+            continue
+        adjusted_idx = sweep_idx - sweep_idx_offset
+        radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
+        {ke_fname: (("azimuth", "range"), ke_dict['data'][adjusted_idx]) })
+        radar_datasets[sweep_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep_idx], ke_fname, ke_dict)
+    return radar_datasets
+
 def _antenna_to_arc(ranges, elevation):
     """
     Return the great circle distance directly below the radar beam and the

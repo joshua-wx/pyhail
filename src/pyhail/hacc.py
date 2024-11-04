@@ -13,6 +13,67 @@ Joshua Soderholm - 12 August 2021
 import numpy as np
 import common
 
+def pyart(radar,
+            sweep_idx, 
+            mesh_idx,
+            fz_level, 
+            pressure,
+            reflectivity_fname='reflectivity_horizontal',
+            hsda_fname='hsda',
+            mesh_fname='mesh',
+            hacc_fname='hacc',
+            sp_reflectivity_threshold=55):
+
+    #init radar fields
+    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
+                     'units':'',
+                     'long_name': '',
+                     'description': '',
+                     'comments': ''}
+    radar.add_field(hacc_fname, empty_radar_field)
+    #run retrieval
+    radar_altitude = radar.altitude['data'][0]
+    _, _, sweep0_z = radar.get_gate_x_y_z(sweep_idx)
+    print(sweep0_z)
+    hacc_dict = main(radar.get_field(sweep_idx, reflectivity_fname).data, 
+                        radar.get_field(sweep_idx, hsda_fname),
+                        radar.get_field(mesh_idx, mesh_fname),
+                        sweep0_z + radar_altitude,
+                        fz_level, pressure,
+                        sp_reflectivity_threshold=sp_reflectivity_threshold)
+    #update data
+    radar.fields[hacc_fname]['data'][radar.get_slice(sweep_idx)] = hacc_dict['data']
+    #update metadata
+    radar = common.add_pyart_metadata(radar, hacc_fname, hacc_dict)
+
+    return radar
+
+def pyodim(radar_datasets, 
+           sweep_idx, 
+           mesh_idx,
+           fz_level, 
+           pressure, 
+           reflectivity_fname='DBZH',
+           hsda_fname='hsda',
+           mesh_fname='mesh',
+           z_fname='z',
+           hacc_fname='hacc',
+           sp_reflectivity_threshold=55):
+    #run retrieval
+    hacc_dict = main(radar_datasets[sweep_idx][reflectivity_fname].values, 
+                            radar_datasets[sweep_idx][hsda_fname].values,
+                            radar_datasets[mesh_idx][mesh_fname].values,
+                            radar_datasets[sweep_idx][z_fname].values,
+                            fz_level, pressure,
+                            sp_reflectivity_threshold=sp_reflectivity_threshold)
+
+    #update data and metadata for new fields
+    radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
+            {hacc_fname: (("azimuth", "range"), hacc_dict['data']) })
+
+    radar_datasets[sweep_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep_idx], hacc_fname, hacc_dict)
+
+    return radar_datasets
 
 def main(reflectivity_sweep, 
          hsda_sweep,

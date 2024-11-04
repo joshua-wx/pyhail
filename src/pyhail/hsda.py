@@ -69,6 +69,16 @@ def pyart(radar,
     hca_hail_idx: list
         index of hail related fields in classification to apply HSDA
     """
+    #init radar fields
+    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
+                     'units':'',
+                     'long_name': '',
+                     'description': '',
+                     'comments': ''}
+    radar.add_field(radar_classification_fname, empty_radar_field)
+    radar.add_field(hsda_fname, empty_radar_field)
+
+
     for sweep in range(radar.nsweeps):
         hca_meta = common.get_odim_ncar_hca(radar.fixed_angle['data'][sweep],
                                             filename,

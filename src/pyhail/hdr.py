@@ -10,16 +10,104 @@ Depue, T. K., Kennedy, P. C., & Rutledge, S. A. (2007). Performance of the hail 
 Joshua Soderholm - 15 June 2018
 """
 
+from pyhail import common
+import numpy as np
+import copy
 
-def main(radar_dict):
+def pyart(radar, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+    """
+
+    wrapper function using pyart object
+
+    Parameters:
+    ===========
+    radar: class
+        pyart radar object
+    reflectivity_fname: string
+        name of reflectivity field
+    differential_reflectivity_fname: string
+        name of differential reflectivity field
+    hdr_fname: string
+        name of HDR field
+    hdr_size_fname: string
+        name of HDR size field
+    Returns:
+    ========
+    radar: pyart radar class
+        updated with hdr and hdr_size fields
+
+    """
+    #init radar fields
+    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
+                     'units':'',
+                     'long_name': '',
+                     'description': '',
+                     'comments': ''}
+    radar.add_field(hdr_fname, copy.deepcopy(empty_radar_field))
+    radar.add_field(hdr_size_fname, copy.deepcopy(empty_radar_field))
+
+    #process sweeps
+    for sweep in range(radar.nsweeps):
+        hdr_meta, hdr_size_meta = hdr(radar.get_field(sweep, reflectivity_fname, copy=True).filled(np.nan), 
+                                       radar.get_field(sweep, differential_reflectivity_fname, copy=True).filled(np.nan))
+        radar.fields[hdr_fname]['data'][radar.get_slice(sweep)] = hdr_meta['data']
+        radar.fields[hdr_size_fname]['data'][radar.get_slice(sweep)] = hdr_size_meta['data']
+    
+    #add metadata
+    radar = common.add_pyart_metadata(radar, hdr_fname, hdr_meta)
+    radar = common.add_pyart_metadata(radar, hdr_size_fname, hdr_size_meta)
+
+    return radar
+
+def pyodim(datasets, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+    """
+    
+    wrapper function using pyodim object
+
+    Parameters:
+    ===========
+    datasets: list of dicts
+        pyodim dataset
+    reflectivity_fname: string
+        name of reflectivity field
+    differential_reflectivity_fname: string
+        name of differential reflectivity field
+    hdr_fname: string
+        name of HDR field
+    hdr_size_fname: string
+        name of HDR size field
+    Returns:
+    ========
+    datasets: dict
+        updated with hdr and hdr_size fields
+
+    """
+    #for each sweep
+    for sweep in range(len(datasets)):
+        hdr_meta, hdr_size_meta = hdr(datasets[sweep][reflectivity_fname].values,
+                                       datasets[sweep][differential_reflectivity_fname].values)
+        #add new fields
+        datasets[sweep] = datasets[sweep].merge(
+            {hdr_fname: (("azimuth", "range"), hdr_meta['data']),
+            hdr_size_fname: (("azimuth", "range"), hdr_size_meta['data']) })
+
+        #update metadata for new fields
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hdr_fname, hdr_meta)
+        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hdr_size_fname, hdr_meta)
+
+    return datasets
+
+def hdr(reflectivity_sweep, differential_reflectivity_sweep):
     """
     Hail Differential Reflectity Retrieval
     Required DBZH and ZDR fields
 
     Parameters:
     ===========
-    radar_dict: dictionary
-        contains two entries, dbz and zdr, which contain numpy arrays of their respective fields.
+    reflectivity_sweep: 2d ndarray
+        reflectivity data in an array with dimensions (azimuth, range)
+    reflectivity_sweep: 2d ndarray
+        differential reflectivity data in an array with dimensions (azimuth, range)    
     Returns:
     ========
     hdr_meta: dict
@@ -28,18 +116,15 @@ def main(radar_dict):
         pyary field dictionary containing HDR size dataset
 
     """
-    # extract fields
-    dbz = radar_dict["dbz"]
-    zdr = radar_dict["zdr"]
 
     # calculate hdr
     # apply primary function
-    zdr_fun = 19 * zdr + 27
+    zdr_fun = 19 * differential_reflectivity_sweep + 27
     # set limits based on zdr
-    zdr_fun[zdr <= 0] = 27
-    zdr_fun[zdr > 1.74] = 60
+    zdr_fun[differential_reflectivity_sweep <= 0] = 27
+    zdr_fun[differential_reflectivity_sweep > 1.74] = 60
     # apply to zhh
-    hdr = dbz - zdr_fun
+    hdr = reflectivity_sweep - zdr_fun
 
     # use polynomial from Depue et al. 2009 to transform dB into mm
     hdr_size = 0.0284 * (hdr ** 2) - 0.366 * hdr + 11.69
@@ -50,7 +135,9 @@ def main(radar_dict):
         "data": hdr,
         "units": "dB",
         "long_name": "Hail Differential Reflectivity",
-        "description": "Hail Differential Reflectivity developed by Aydin and Zhao (1990) doi:10.1109/TGRS.1990.572906"
+        "description": "Hail Differential Reflectivity developed by Aydin and Zhao (1990) doi:10.1109/TGRS.1990.572906",
+        "comments": ""
+
     }
 
     hdr_size_meta = {

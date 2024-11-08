@@ -6,6 +6,107 @@ Joshua Soderholm - 15 June 2020
 """
 import numpy as np
 from pyhail import common
+from scipy.interpolate import interp1d
+from scipy import ndimage as ndi
+
+def remove_small_objects(ar, min_size=64, connectivity=1, *, out=None):
+    """Remove objects smaller than the specified size.
+
+    Copyied from https://github.com/scikit-image/scikit-image/blob/v0.24.0/skimage/morphology/misc.py#L64-L160
+
+    Expects ar to be an array with labeled objects, and removes objects
+    smaller than min_size. If `ar` is bool, the image is first labeled.
+    This leads to potentially different behavior for bool and 0-and-1
+    arrays.
+
+    Parameters
+    ----------
+    ar : ndarray (arbitrary shape, int or bool type)
+        The array containing the objects of interest. If the array type is
+        int, the ints must be non-negative.
+    min_size : int, optional (default: 64)
+        The smallest allowable object size.
+    connectivity : int, {1, 2, ..., ar.ndim}, optional (default: 1)
+        The connectivity defining the neighborhood of a pixel. Used during
+        labelling if `ar` is bool.
+    out : ndarray
+        Array of the same shape as `ar`, into which the output is
+        placed. By default, a new array is created.
+
+    Raises
+    ------
+    TypeError
+        If the input array is of an invalid type, such as float or string.
+    ValueError
+        If the input array contains negative values.
+
+    Returns
+    -------
+    out : ndarray, same shape and type as input `ar`
+        The input array with small connected components removed.
+
+    See Also
+    --------
+    skimage.morphology.remove_objects_by_distance
+
+    Examples
+    --------
+    >>> from skimage import morphology
+    >>> a = np.array([[0, 0, 0, 1, 0],
+    ...               [1, 1, 1, 0, 0],
+    ...               [1, 1, 1, 0, 1]], bool)
+    >>> b = morphology.remove_small_objects(a, 6)
+    >>> b
+    array([[False, False, False, False, False],
+           [ True,  True,  True, False, False],
+           [ True,  True,  True, False, False]])
+    >>> c = morphology.remove_small_objects(a, 7, connectivity=2)
+    >>> c
+    array([[False, False, False,  True, False],
+           [ True,  True,  True, False, False],
+           [ True,  True,  True, False, False]])
+    >>> d = morphology.remove_small_objects(a, 6, out=a)
+    >>> d is a
+    True
+
+    """
+    # Raising type error if not int or bool
+
+    if out is None:
+        out = ar.copy()
+    else:
+        out[:] = ar
+
+    if min_size == 0:  # shortcut for efficiency
+        return out
+
+    if out.dtype == bool:
+        footprint = ndi.generate_binary_structure(ar.ndim, connectivity)
+        ccs = np.zeros_like(ar, dtype=np.int32)
+        ndi.label(ar, footprint, output=ccs)
+    else:
+        ccs = out
+
+    try:
+        component_sizes = np.bincount(ccs.ravel())
+    except ValueError:
+        raise ValueError(
+            "Negative value labels are not supported. Try "
+            "relabeling the input with `scipy.ndimage.label` or "
+            "`skimage.morphology.label`."
+        )
+
+    if len(component_sizes) == 2 and out.dtype != bool:
+        warn(
+            "Only one label was provided to `remove_small_objects`. "
+            "Did you mean to use a boolean array?"
+        )
+
+    too_small = component_sizes < min_size
+    too_small_mask = too_small[ccs]
+    out[too_small_mask] = 0
+
+    return out
 
 def filter_small_objects(field, threshold=0, size=9):
 
@@ -27,7 +128,7 @@ def filter_small_objects(field, threshold=0, size=9):
     #apply intensity threshold to produce a mask
     masked_data = field > threshold
     #remove small objects
-    filtered_masked_data = common.remove_small_objects(masked_data, min_size=size)
+    filtered_masked_data = remove_small_objects(masked_data, min_size=size)
     #apply filter to field
     field[filtered_masked_data == 0] = threshold
 
@@ -72,7 +173,7 @@ def main(
     dbz_fname,
     levels,
     radar_band='C',
-    mesh_method="mh2019_95",
+    mesh_method="mh2019_75",
     mesh_fname=None,
     posh_fname=None,
     ke_fname=None,

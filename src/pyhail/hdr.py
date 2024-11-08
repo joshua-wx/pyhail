@@ -10,24 +10,46 @@ Depue, T. K., Kennedy, P. C., & Rutledge, S. A. (2007). Performance of the hail 
 Joshua Soderholm - 15 June 2018
 """
 
-import common
+from pyhail import common
 import numpy as np
+import copy
 
 def pyart(radar, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+    """
 
+    wrapper function using pyart object
+
+    Parameters:
+    ===========
+    radar: class
+        pyart radar object
+    reflectivity_fname: string
+        name of reflectivity field
+    differential_reflectivity_fname: string
+        name of differential reflectivity field
+    hdr_fname: string
+        name of HDR field
+    hdr_size_fname: string
+        name of HDR size field
+    Returns:
+    ========
+    radar: pyart radar class
+        updated with hdr and hdr_size fields
+
+    """
     #init radar fields
     empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
                      'units':'',
                      'long_name': '',
                      'description': '',
                      'comments': ''}
-    radar.add_field(hdr_fname, empty_radar_field)
-    radar.add_field(hdr_size_fname, empty_radar_field)
+    radar.add_field(hdr_fname, copy.deepcopy(empty_radar_field))
+    radar.add_field(hdr_size_fname, copy.deepcopy(empty_radar_field))
 
     #process sweeps
     for sweep in range(radar.nsweeps):
-        hdr_meta, hdr_size_meta = hdr(radar.get_field(sweep, reflectivity_fname).data, 
-                                       radar.get_field(sweep, differential_reflectivity_fname).data)
+        hdr_meta, hdr_size_meta = hdr(radar.get_field(sweep, reflectivity_fname, copy=True).filled(np.nan), 
+                                       radar.get_field(sweep, differential_reflectivity_fname, copy=True).filled(np.nan))
         radar.fields[hdr_fname]['data'][radar.get_slice(sweep)] = hdr_meta['data']
         radar.fields[hdr_size_fname]['data'][radar.get_slice(sweep)] = hdr_size_meta['data']
     
@@ -38,7 +60,28 @@ def pyart(radar, reflectivity_fname, differential_reflectivity_fname, hdr_fname=
     return radar
 
 def pyodim(datasets, reflectivity_fname, differential_reflectivity_fname, hdr_fname='hdr', hdr_size_fname='hdr_size'):
+    """
+    
+    wrapper function using pyodim object
 
+    Parameters:
+    ===========
+    datasets: list of dicts
+        pyodim dataset
+    reflectivity_fname: string
+        name of reflectivity field
+    differential_reflectivity_fname: string
+        name of differential reflectivity field
+    hdr_fname: string
+        name of HDR field
+    hdr_size_fname: string
+        name of HDR size field
+    Returns:
+    ========
+    datasets: dict
+        updated with hdr and hdr_size fields
+
+    """
     #for each sweep
     for sweep in range(len(datasets)):
         hdr_meta, hdr_size_meta = hdr(datasets[sweep][reflectivity_fname].values,

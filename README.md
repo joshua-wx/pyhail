@@ -1,17 +1,18 @@
 # Python Hail Retrieval Toolkit (pyhail) ⛈️📡🧊
 
-This toolkit provides a collection of hail retrieval techniques for
-weather radar data.
+This toolkit provides a collection of hail retrieval techniques for weather radar data.
 
 ### Library Dependencies
-- [Py-ART](https://github.com/ARM-DOE/pyart/) for ingesting data
 - numpy
-- netCDF4
 - scipy
 - numba
-### Notebook Dependencies
+
+### Supporter radar file readers
+- [PyART](https://github.com/ARM-DOE/pyart)
+- [PyOdim](https://github.com/vlouf/pyodim)
+
+### Notebook plotting Dependencies
 - matplotlib
-- cartopy
 
 ### Hail Retrivals
 - *Hail Size Discrimination Algorithm - HSDA ([Ortega et al. 2016](https://journals.ametsoc.org/doi/10.1175/JAMC-D-15-0203.1))

@@ -10,20 +10,52 @@ Contains the LASH retrieval for gridded radar data.
 Joshua Soderholm - 12 August 2021
 """
 
+from pyhail import common
 import numpy as np
-import common
+
 
 def pyart(radar,
+            reflectivity_fname,
             sweep_idx, 
             mesh_idx,
             fz_level, 
             pressure,
-            reflectivity_fname='reflectivity_horizontal',
             hsda_fname='hsda',
             mesh_fname='mesh',
             hacc_fname='hacc',
             sp_reflectivity_threshold=55):
+    """
+    Pyart Wrapper for Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016.
 
+    Parameters:
+    ===========
+    radar: class
+        pyart radar object
+    reflectivity_fname: string
+        name of reflectivity field
+    sweep_idx : integer
+        index of reflectivity sweep to use for hacc calculation
+    mesh_idx : integer
+        integer of sweep continaing MESH data in the radar object
+    fz_level: int
+        wet bulb freezing level (m)
+    pressure: float (1,)
+        mean pressure between the surface and the height of the 0C wet-bulb temperature
+    hsda_fname: string
+        name of hsda field
+    mesh_fname: string
+        name of mesh field
+    hacc_fname: string
+        name of hacc field
+    sp_reflectivity_threshold: float
+        value used to threshold reflectivity for single pol analysis
+    Returns:
+    ========
+    radar: class
+        pyart radar object updated with the hacc field
+
+    """
+    
     #init radar fields
     empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
                      'units':'',
@@ -34,31 +66,64 @@ def pyart(radar,
     #run retrieval
     radar_altitude = radar.altitude['data'][0]
     _, _, sweep0_z = radar.get_gate_x_y_z(sweep_idx)
-    print(sweep0_z)
-    hacc_dict = main(radar.get_field(sweep_idx, reflectivity_fname).data, 
-                        radar.get_field(sweep_idx, hsda_fname),
-                        radar.get_field(mesh_idx, mesh_fname),
+    hacc_dict = main(radar.get_field(sweep_idx, reflectivity_fname, copy=True).filled(np.nan), 
+                        radar.get_field(sweep_idx, hsda_fname, copy=True),
+                        radar.get_field(mesh_idx, mesh_fname, copy=True),
                         sweep0_z + radar_altitude,
                         fz_level, pressure,
                         sp_reflectivity_threshold=sp_reflectivity_threshold)
-    #update data
+    #update data and metadata
     radar.fields[hacc_fname]['data'][radar.get_slice(sweep_idx)] = hacc_dict['data']
-    #update metadata
     radar = common.add_pyart_metadata(radar, hacc_fname, hacc_dict)
 
     return radar
 
 def pyodim(radar_datasets, 
+           reflectivity_fname,
            sweep_idx, 
            mesh_idx,
            fz_level, 
            pressure, 
-           reflectivity_fname='DBZH',
            hsda_fname='hsda',
            mesh_fname='mesh',
            z_fname='z',
            hacc_fname='hacc',
            sp_reflectivity_threshold=55):
+    
+
+    """
+    Pyodim Wrapper for Hail Accumulation defined by Robinson et al. 2018 and Kalina et al. 2016.
+
+    Parameters:
+    ===========
+    datasets: list of dicts
+        pyodim dataset
+    reflectivity_fname: string
+        name of reflectivity field
+    sweep_idx : integer
+        index of reflectivity sweep to use for hacc calculation
+    mesh_idx : integer
+        integer of sweep continaing MESH data in the radar object
+    fz_level: int
+        wet bulb freezing level (m)
+    pressure: float (1,)
+        mean pressure between the surface and the height of the 0C wet-bulb temperature
+    reflectivity_fname: string
+        name of reflectivity field
+    hsda_fname: string
+        name of hsda field
+    mesh_fname: string
+        name of mesh field
+    hacc_fname: string
+        name of hacc field
+    sp_reflectivity_threshold: float
+        value used to threshold reflectivity for single pol analysis
+    Returns:
+    ========
+    datasets: list of dicts
+        pyodim dataset updated with hacc field
+
+    """
     #run retrieval
     hacc_dict = main(radar_datasets[sweep_idx][reflectivity_fname].values, 
                             radar_datasets[sweep_idx][hsda_fname].values,
@@ -67,10 +132,9 @@ def pyodim(radar_datasets,
                             fz_level, pressure,
                             sp_reflectivity_threshold=sp_reflectivity_threshold)
 
-    #update data and metadata for new fields
+    #update data and metadata
     radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
             {hacc_fname: (("azimuth", "range"), hacc_dict['data']) })
-
     radar_datasets[sweep_idx] = common.add_pyodim_sweep_metadata(radar_datasets[sweep_idx], hacc_fname, hacc_dict)
 
     return radar_datasets

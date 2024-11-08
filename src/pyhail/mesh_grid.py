@@ -173,7 +173,7 @@ def main(
     dbz_fname,
     levels,
     radar_band='C',
-    mesh_method="mh2019_95",
+    mesh_method="mh2019_75",
     mesh_fname=None,
     posh_fname=None,
     ke_fname=None,

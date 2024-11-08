@@ -17,7 +17,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="pyhail",
-    version="2.4.1",
+    version="3.0.0",
     description="Python Hail Weather Radar Retrievals",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -34,7 +34,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     package_dir = {'': 'src'},
     packages=['pyhail'],
     project_urls={"Source": "https://github.com/joshuass/pyhail",},

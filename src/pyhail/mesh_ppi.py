@@ -5,26 +5,28 @@ This algorthim was originally developed by Witt et al. 1998 and modified by Muri
 Joshua Soderholm - 15 August 2020
 """
 
-from pyhail import common
-import numpy as np
 import copy
+import numpy as np
+from pyhail import common
 
-def pyart(radar,
-            reflectivity_fname,
-            temp_levels,
-            ke_fname='ke',
-            shi_fname='shi',
-            mesh_fname='mesh',
-            posh_fname='posh',
-            radar_band='S',
-            min_range=10,
-            max_range=150,
-            mesh_method="mh2019_75",
-            correct_cband_refl=True,
-            minimum_sweeps_raise_expection=4,
-            minimum_sweeps_raise_warning=8,
-            column_shift_maximum=2500):
-    
+
+def pyart(
+    radar,
+    reflectivity_fname,
+    temp_levels,
+    ke_fname="ke",
+    shi_fname="shi",
+    mesh_fname="mesh",
+    posh_fname="posh",
+    radar_band="S",
+    min_range=10,
+    max_range=150,
+    mesh_method="mh2019_75",
+    correct_cband_refl=True,
+    minimum_sweeps_raise_expection=4,
+    minimum_sweeps_raise_warning=8,
+    column_shift_maximum=2500,
+):
     """
     PyART Wrapper for PPI MESH
 
@@ -44,7 +46,7 @@ def pyart(radar,
         name of mesh field
     posh_fname: string
         name of posh field
-    radar_band: str 
+    radar_band: str
         radar frequency band (either C or S)
     min_range: int
         minimum surface range for MESH retrieval (m)
@@ -65,84 +67,94 @@ def pyart(radar,
     radar: class
         pyart radar object updated with mesh, ke, shi, posh fields
     """
-     
-    #init radar fields
-    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
-                     'units':'',
-                     'long_name': '',
-                     'description': '',
-                     'comments': ''}
+
+    # init radar fields
+    empty_radar_field = {
+        "data": np.zeros((radar.nrays, radar.ngates)),
+        "units": "",
+        "long_name": "",
+        "description": "",
+        "comments": "",
+    }
     radar.add_field(ke_fname, copy.deepcopy(empty_radar_field))
     radar.add_field(shi_fname, copy.deepcopy(empty_radar_field))
     radar.add_field(mesh_fname, copy.deepcopy(empty_radar_field))
     radar.add_field(posh_fname, copy.deepcopy(empty_radar_field))
-    #build datasets
+    # build datasets
     reflectivity_dataset = []
     elevation_dataset = []
     azimuth_dataset = []
     range_dataset = []
     elevation_dataset = []
-    radar_altitude = radar.altitude['data'][0]
+    radar_altitude = radar.altitude["data"][0]
     for sweep_idx in range(radar.nsweeps):
-        reflectivity_dataset.append(radar.get_field(sweep_idx, reflectivity_fname, copy=True).filled(np.nan))
+        reflectivity_dataset.append(
+            radar.get_field(sweep_idx, reflectivity_fname, copy=True).filled(np.nan)
+        )
         azimuth_dataset.append(radar.get_azimuth(sweep_idx))
-        range_dataset.append(radar.range['data'])
-        elevation_dataset.append(radar.fixed_angle['data'][sweep_idx])
+        range_dataset.append(radar.range["data"])
+        elevation_dataset.append(radar.fixed_angle["data"][sweep_idx])
 
-    #run retrieval
-    ke_dict, shi_dict, mesh_dict, posh_dict = main(reflectivity_dataset,
-                                                        elevation_dataset,
-                                                        azimuth_dataset,
-                                                        range_dataset,
-                                                        radar_altitude,
-                                                        temp_levels,
-                                                        radar_band=radar_band,
-                                                        min_range=min_range,
-                                                        max_range=max_range,
-                                                        mesh_method=mesh_method,
-                                                        correct_cband_refl=correct_cband_refl,
-                                                        minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
-                                                        minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
-                                                        column_shift_maximum=column_shift_maximum)
+    # run retrieval
+    ke_dict, shi_dict, mesh_dict, posh_dict = main(
+        reflectivity_dataset,
+        elevation_dataset,
+        azimuth_dataset,
+        range_dataset,
+        radar_altitude,
+        temp_levels,
+        radar_band=radar_band,
+        min_range=min_range,
+        max_range=max_range,
+        mesh_method=mesh_method,
+        correct_cband_refl=correct_cband_refl,
+        minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
+        minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
+        column_shift_maximum=column_shift_maximum,
+    )
 
-    #index of lowest sweep
+    # index of lowest sweep
     sweep0_idx = np.argmin(elevation_dataset)
 
-    #update data
+    # update data
     for sweep_idx in range(radar.nsweeps):
-        radar.fields[ke_fname]['data'][radar.get_slice(sweep_idx)] = ke_dict['data'][sweep_idx]
-    radar.fields[shi_fname]['data'][radar.get_slice(sweep0_idx)] = shi_dict['data']
-    radar.fields[mesh_fname]['data'][radar.get_slice(sweep0_idx)] = mesh_dict['data']
-    radar.fields[posh_fname]['data'][radar.get_slice(sweep0_idx)] = posh_dict['data']
+        radar.fields[ke_fname]["data"][radar.get_slice(sweep_idx)] = ke_dict["data"][
+            sweep_idx
+        ]
+    radar.fields[shi_fname]["data"][radar.get_slice(sweep0_idx)] = shi_dict["data"]
+    radar.fields[mesh_fname]["data"][radar.get_slice(sweep0_idx)] = mesh_dict["data"]
+    radar.fields[posh_fname]["data"][radar.get_slice(sweep0_idx)] = posh_dict["data"]
 
-    #update metadata
+    # update metadata
     radar = common.add_pyart_metadata(radar, ke_fname, ke_dict)
     radar = common.add_pyart_metadata(radar, shi_fname, shi_dict)
     radar = common.add_pyart_metadata(radar, mesh_fname, mesh_dict)
     radar = common.add_pyart_metadata(radar, posh_fname, posh_dict)
-    
+
     return radar
 
-def pyodim(datasets,
-            reflectivity_fname,
-            temp_levels,
-            radar_height_fname='height',
-            elevation_fname='elevation',
-            azimuth_fname='azimuth',
-            range_fname='range',
-            ke_fname='ke',
-            shi_fname='shi',
-            mesh_fname='mesh',
-            posh_fname='posh',
-            radar_band='S',
-            min_range=10,
-            max_range=150,
-            mesh_method="mh2019_75",
-            correct_cband_refl=True,
-            minimum_sweeps_raise_expection=4,
-            minimum_sweeps_raise_warning=8,
-            column_shift_maximum=2500):
-    
+
+def pyodim(
+    datasets,
+    reflectivity_fname,
+    temp_levels,
+    radar_height_fname="height",
+    elevation_fname="elevation",
+    azimuth_fname="azimuth",
+    range_fname="range",
+    ke_fname="ke",
+    shi_fname="shi",
+    mesh_fname="mesh",
+    posh_fname="posh",
+    radar_band="S",
+    min_range=10,
+    max_range=150,
+    mesh_method="mh2019_75",
+    correct_cband_refl=True,
+    minimum_sweeps_raise_expection=4,
+    minimum_sweeps_raise_warning=8,
+    column_shift_maximum=2500,
+):
     """
     Pyodim Wrapper for PPI MESH
 
@@ -168,7 +180,7 @@ def pyodim(datasets,
         name of mesh field
     posh_fname: string
         name of posh field
-    radar_band: str 
+    radar_band: str
         radar frequency band (either C or S)
     min_range: int
         minimum surface range for MESH retrieval (m)
@@ -190,8 +202,8 @@ def pyodim(datasets,
         pyodim dataset updated with mesh, ke, shi, posh fields
 
     """
-        
-    #build datasets
+
+    # build datasets
     reflectivity_dataset = []
     elevation_dataset = []
     azimuth_dataset = []
@@ -203,39 +215,54 @@ def pyodim(datasets,
         elevation_dataset.append(datasets[sweep_idx][elevation_fname].data[0])
         azimuth_dataset.append(datasets[sweep_idx][azimuth_fname].values)
         range_dataset.append(datasets[sweep_idx][range_fname].values)
-    #run retrieval
-    ke_dict, shi_dict, mesh_dict, posh_dict = main(reflectivity_dataset,
-                                                        elevation_dataset,
-                                                        azimuth_dataset,
-                                                        range_dataset,
-                                                        radar_altitude,
-                                                        temp_levels,
-                                                        radar_band=radar_band,
-                                                        min_range=min_range,
-                                                        max_range=max_range,
-                                                        mesh_method=mesh_method,
-                                                        correct_cband_refl=correct_cband_refl,
-                                                        minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
-                                                        minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
-                                                        column_shift_maximum=column_shift_maximum)
-    
-    #add 2D fields and metadata
+    # run retrieval
+    ke_dict, shi_dict, mesh_dict, posh_dict = main(
+        reflectivity_dataset,
+        elevation_dataset,
+        azimuth_dataset,
+        range_dataset,
+        radar_altitude,
+        temp_levels,
+        radar_band=radar_band,
+        min_range=min_range,
+        max_range=max_range,
+        mesh_method=mesh_method,
+        correct_cband_refl=correct_cband_refl,
+        minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
+        minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
+        column_shift_maximum=column_shift_maximum,
+    )
+
+    # add 2D fields and metadata
     sweep0_idx = np.argmin(elevation_dataset)
-    datasets[sweep0_idx] = datasets[0].merge( {
-            shi_fname: (("azimuth", "range"), shi_dict['data']),
-            mesh_fname: (("azimuth", "range"), mesh_dict['data']),
-            posh_fname: (("azimuth", "range"), posh_dict['data']) })
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(datasets[sweep0_idx], shi_fname, shi_dict)
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(datasets[sweep0_idx], mesh_fname, mesh_dict)
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(datasets[sweep0_idx], posh_fname, posh_dict)
-    
-    #add 3D field and metadata
-    for sweep_idx in range(len(datasets)):
+    datasets[sweep0_idx] = datasets[0].merge(
+        {
+            shi_fname: (("azimuth", "range"), shi_dict["data"]),
+            mesh_fname: (("azimuth", "range"), mesh_dict["data"]),
+            posh_fname: (("azimuth", "range"), posh_dict["data"]),
+        }
+    )
+    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
+        datasets[sweep0_idx], shi_fname, shi_dict
+    )
+    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
+        datasets[sweep0_idx], mesh_fname, mesh_dict
+    )
+    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
+        datasets[sweep0_idx], posh_fname, posh_dict
+    )
+
+    # add 3D field and metadata
+    for sweep_idx, _ in enumerate(datasets):
         datasets[sweep_idx] = datasets[sweep_idx].merge(
-        {ke_fname: (("azimuth", "range"), ke_dict['data'][sweep_idx]) })
-        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(datasets[sweep_idx], ke_fname, ke_dict)
-        
+            {ke_fname: (("azimuth", "range"), ke_dict["data"][sweep_idx])}
+        )
+        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
+            datasets[sweep_idx], ke_fname, ke_dict
+        )
+
     return datasets
+
 
 def _antenna_to_arc(ranges, elevation):
     """
@@ -272,10 +299,11 @@ def _antenna_to_arc(ranges, elevation):
     theta_e = elevation * np.pi / 180.0  # elevation angle in radians.
     R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
     r = ranges
-    
-    z = (r ** 2 + R ** 2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
+
+    z = (r**2 + R**2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
     s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
     return s, z
+
 
 def _calc_dz(column_z):
     """
@@ -296,7 +324,7 @@ def _calc_dz(column_z):
     dz = []
     n_ppi = len(column_z)
     for i in range(n_ppi):
-        #calculate dz for use in shi calc
+        # calculate dz for use in shi calc
         if i == 0:
             value = column_z[i + 1] - column_z[i]
         elif (i != 0) & (i != n_ppi - 1):
@@ -307,6 +335,7 @@ def _calc_dz(column_z):
     dz = np.array(dz)
     return dz
 
+
 def main(
     reflectivity,
     elevation,
@@ -314,16 +343,15 @@ def main(
     rangebin,
     radar_altitude,
     levels,
-    radar_band='S',
+    radar_band="S",
     min_range=10,
     max_range=150,
     mesh_method="mh2019_75",
     correct_cband_refl=True,
     minimum_sweeps_raise_expection=4,
     minimum_sweeps_raise_warning=8,
-    column_shift_maximum=2500
+    column_shift_maximum=2500,
 ):
-
     """
     Adapted from Witt et al. 1998 and Murillo and Homeyer 2019
 
@@ -341,7 +369,7 @@ def main(
         altitude of radar AMSL
     levels : list of length 2
         height above sea level (m) of the freezing level and -20C level (in any order)
-    radar_band: str 
+    radar_band: str
         radar frequency band (either C or S)
     min_range: int
         minimum surface range for MESH retrieval (m)
@@ -364,12 +392,12 @@ def main(
     """
 
     # require C or S band
-    if radar_band not in ["C","S"]:
+    if radar_band not in ["C", "S"]:
         raise ValueError("radar_band must be a string of value C or S")
     # require levels
     if levels is None:
         raise ValueError("Missing levels data for freezing level and -20C level")
-    
+
     # Rain/Hail dBZ boundaries
     Zl = 40
     Zu = 50
@@ -384,29 +412,43 @@ def main(
     reflectivity_dataset = [reflectivity[i] for i in sort_idx]
     elevation_dataset = [elevation[i] for i in sort_idx]
     azimuth_dataset = [azimuth[i] for i in sort_idx]
-    range_dataset = [rangebin[i] for i in sort_idx] 
+    range_dataset = [rangebin[i] for i in sort_idx]
 
     # require more than one sweep
     if len(elevation_dataset) <= minimum_sweeps_raise_expection:
-        raise Exception(f"Require more than {minimum_sweeps_raise_expection} sweeps to calculate MESH")
+        raise RuntimeError(
+            f"Require more than {minimum_sweeps_raise_expection} sweeps to calculate MESH"
+        )
     elif len(elevation_dataset) < minimum_sweeps_raise_warning:
-        raise Warning("Number of sweep is less than {minimum_sweeps_raise_warning} and not recommended for MESH calculations")
+        raise Warning(
+            "Number of sweep is less than {minimum_sweeps_raise_warning} and not recommended for MESH calculations"
+        )
     # sweep must be sorted from lowest to highest elevation
     dx = np.diff(elevation_dataset)
     if np.all(dx <= 0):
-        raise Exception(f"Datasets have not been sorted so sweeps are increasing monotonically")
+        raise RuntimeError(
+            "Datasets have not been sorted so sweeps are increasing monotonically"
+        )
 
     # Initialize sweep coords
     sweep0_nrays = len(azimuth_dataset[0])
     sweep0_nbins = len(range_dataset[0])
     n_ppi = len(elevation_dataset)
-    z_dataset = [] #list (dim: elevation) of 1d array (dim: range) for each sweep, altitude above ground level (m) of each range bin
-    s_dataset = [] #list (dim: elevation) of 1d array (dim: range) for each sweep, great circle arc distance (m) of each radar bin
-    wt_dataset = [] #list (dim: elevation) of 1d array (dim: range) for each sweep, temperature weighting value
-    hail_ke_dataset = [] #list (dim: elevation) of 2d array (dim: azimuth, range) for each sweep, hail kinetic energy
-    hail_refl_correction_description = ''
+    z_dataset = (
+        []
+    )  # list (dim: elevation) of 1d array (dim: range) for each sweep, altitude above ground level (m) of each range bin
+    s_dataset = (
+        []
+    )  # list (dim: elevation) of 1d array (dim: range) for each sweep, great circle arc distance (m) of each radar bin
+    wt_dataset = (
+        []
+    )  # list (dim: elevation) of 1d array (dim: range) for each sweep, temperature weighting value
+    hail_ke_dataset = (
+        []
+    )  # list (dim: elevation) of 2d array (dim: azimuth, range) for each sweep, hail kinetic energy
+    hail_refl_correction_description = ""
     for i in range(n_ppi):
-        #calculate cartesian coordinates
+        # calculate cartesian coordinates
         s, z = _antenna_to_arc(range_dataset[i], elevation_dataset[i])
         s_dataset.append(s)
         z_dataset.append(z + radar_altitude)
@@ -417,8 +459,8 @@ def main(
         wt[wt < 0] = 0
         wt[wt > 1] = 1
         wt_dataset.append(wt)
-        #apply C band correction
-        if radar_band == 'C' and correct_cband_refl:
+        # apply C band correction
+        if radar_band == "C" and correct_cband_refl:
             reflectivity_dataset[i] = reflectivity_dataset[i] * 1.113 - 3.929
             hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
         # calc weights for hail kenetic energy
@@ -427,72 +469,94 @@ def main(
         reflectivity_weights[reflectivity_dataset[i] >= Zu] = 1
         reflectivity_weights[reflectivity_weights < 0] = 0
         reflectivity_weights[reflectivity_weights > 1] = 1
-        #limit on DBZ
+        # limit on DBZ
         reflectivity_dataset[i][reflectivity_dataset[i] > 100] = 100
         reflectivity_dataset[i][reflectivity_dataset[i] < -100] = -100
         # calc hail kenetic energy
-        hail_ke = (5.0e-6) * 10 ** (0.084 * reflectivity_dataset[i]) * reflectivity_weights
+        hail_ke = (
+            (5.0e-6) * 10 ** (0.084 * reflectivity_dataset[i]) * reflectivity_weights
+        )
         hail_ke[np.isnan(hail_ke)] = 0
         hail_ke_dataset.append(hail_ke)
 
-    #generate arc range and dz lookup (note these have different dimensions to the dimension variables)
-    dz_dataset = [] #list (dim: range) where each element represents a range bin, 1d array (dim: elevation) where each element represents a sweep, altitude dz for shi integration (m)
-    s_lookup_dataset = [] #list (dim: range) where each element represents a range bin, a 1d array (dim: elevation[1:]) of the index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
+    # generate arc range and dz lookup (note these have different dimensions to the dimension variables)
+    dz_dataset = (
+        []
+    )  # list (dim: range) where each element represents a range bin, 1d array (dim: elevation) where each element represents a sweep, altitude dz for shi integration (m)
+    s_lookup_dataset = (
+        []
+    )  # list (dim: range) where each element represents a range bin, a 1d array (dim: elevation[1:]) of the index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
     for rg_idx in range(sweep0_nbins):
         s_lookup = [0]
         column_z = [z_dataset[0][rg_idx]]
         for sweep_idx in range(1, n_ppi, 1):
-            dist_array = np.abs(s_dataset[0][rg_idx]-s_dataset[sweep_idx])
+            dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
-            #skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths)
+            # skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths)
             if dist_array[closest_rng_idx] < column_shift_maximum:
                 s_lookup.append(closest_rng_idx)
                 column_z.append(z_dataset[sweep_idx][closest_rng_idx])
         s_lookup_dataset.append(np.array(s_lookup))
         dz_dataset.append(_calc_dz(column_z))
 
-    #calculate shi on lowest sweep coordinates
+    # calculate shi on lowest sweep coordinates
     shi = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])))
     shi_mask = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])), dtype=bool)
     # loop through each ray in the lowest sweep
     for az_idx in range(sweep0_nrays):
         # loop through each range bin for the ray
         for rg_idx in range(sweep0_nbins):
-            #check if sweep0 (lowest) range is outside of limits
-            if s_dataset[0][rg_idx] < min_range * 1000 or s_dataset[0][rg_idx] > max_range * 1000:
+            # check if sweep0 (lowest) range is outside of limits
+            if (
+                s_dataset[0][rg_idx] < min_range * 1000
+                or s_dataset[0][rg_idx] > max_range * 1000
+            ):
                 shi_mask[az_idx, rg_idx] = True
                 continue
-            #init shi elements
-            column_shi_elements = [hail_ke_dataset[0][az_idx, rg_idx] * wt_dataset[0][rg_idx]] # HKE * WT
-            #loop through the sweep entries in the lookup table. ASSUMES ORDERED SWEEPS, AS IT WILL REMOVE BIRDBATH SCANS THAT FALL AT THE END OF THE VOLUME
+            # init shi elements
+            column_shi_elements = [
+                hail_ke_dataset[0][az_idx, rg_idx] * wt_dataset[0][rg_idx]
+            ]  # HKE * WT
+            # loop through the sweep entries in the lookup table. ASSUMES ORDERED SWEEPS, AS IT WILL REMOVE BIRDBATH SCANS THAT FALL AT THE END OF THE VOLUME
             for sweep_idx in range(1, len(s_lookup_dataset[rg_idx]), 1):
                 # find closest point using great circle arc to sweep0 (lowest) location
                 closest_idx = s_lookup_dataset[rg_idx][sweep_idx]
-                column_shi_elements.append(hail_ke_dataset[sweep_idx][az_idx, closest_idx] * wt_dataset[sweep_idx][closest_idx])
+                column_shi_elements.append(
+                    hail_ke_dataset[sweep_idx][az_idx, closest_idx]
+                    * wt_dataset[sweep_idx][closest_idx]
+                )
             # insert into SHI if there's a valid value
             if np.max(column_shi_elements) > 0:
-                shi[az_idx, rg_idx] = 0.1 * np.sum(column_shi_elements * dz_dataset[rg_idx])
+                shi[az_idx, rg_idx] = 0.1 * np.sum(
+                    column_shi_elements * dz_dataset[rg_idx]
+                )
 
     # calc maximum estimated severe hail (mm)
     if (
         mesh_method == "witt1998"
     ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
-        mesh = 2.54 * shi ** 0.5
+        mesh = 2.54 * shi**0.5
         mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
-        mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first sweep"
-        
+        mesh_comment = (
+            "75th percentile fit using 147 hail reports; only valid in the first sweep"
+        )
+
     elif (
         mesh_method == "mh2019_75"
     ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 15.096 * shi ** 0.206
+        mesh = 15.096 * shi**0.206
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
-        mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first sweep"
+        mesh_comment = (
+            "75th percentile fit using 5897 hail reports; only valid in the first sweep"
+        )
     elif (
         mesh_method == "mh2019_95"
     ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 22.157 * shi ** 0.212
+        mesh = 22.157 * shi**0.212
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
-        mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first sweep"
+        mesh_comment = (
+            "95th percentile fit using 5897 hail reports; only valid in the first sweep"
+        )
     else:
         raise ValueError(
             "unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95"
@@ -507,7 +571,7 @@ def main(
     posh[posh < 0] = 0
     posh[posh > 100] = 100
 
-    #mask outside of coverage with nan
+    # mask outside of coverage with nan
     posh[shi_mask] = np.nan
     shi[shi_mask] = np.nan
     mesh[shi_mask] = np.nan
@@ -518,8 +582,8 @@ def main(
         "data": hail_ke_dataset,
         "units": "Jm-2s-1",
         "long_name": "Hail Kinetic Energy",
-        "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " + 
-        hail_refl_correction_description,
+        "description": "Hail Kinetic Energy developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
+        + hail_refl_correction_description,
     }
 
     # SHI,MESH and POSH are only valid at the surface as a single sweep
@@ -527,8 +591,8 @@ def main(
         "data": shi,
         "units": "Jm-1s-1",
         "long_name": "Severe Hail Index",
-        "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " + 
-        hail_refl_correction_description,
+        "description": "Severe Hail Index developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
+        + hail_refl_correction_description,
         "comments": "only valid in the first sweep",
     }
 
@@ -536,18 +600,18 @@ def main(
         "data": mesh,
         "units": "mm",
         "long_name": "Maximum Expected Size of Hail using " + mesh_method,
-        "description":mesh_description + hail_refl_correction_description,
+        "description": mesh_description + hail_refl_correction_description,
         "comments": mesh_comment,
     }
-    
+
     posh_dict = {
         "data": posh,
         "units": "%",
         "long_name": "Probability of Severe Hail",
-        "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 " +
-        hail_refl_correction_description,
+        "description": "Probability of Severe Hail developed by Witt et al. (1998) doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
+        + hail_refl_correction_description,
         "comments": "only valid in the first sweep",
     }
-    
+
     # return output_fields dictionary
     return ke_dict, shi_dict, mesh_dict, posh_dict

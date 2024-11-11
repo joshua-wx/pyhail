@@ -1,6 +1,7 @@
 """
 HSDA implementation (Hail Size Discrimination Algorthim)
-This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 and Ryzhkov et al. 2013 doi:10.1175/JAMC-D-13-074.1
+This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 
+and Ryzhkov et al. 2013 doi:10.1175/JAMC-D-13-074.1
 
 Joshua Soderholm - 15 June 2018
 """
@@ -10,16 +11,19 @@ from numba import jit
 import numpy as np
 import copy
 
-def pyart(radar, 
-          reflectivity_fname, 
-          differential_reflectivity_fname, 
-          cross_correlation_ratio_fname, 
-          radar_classification_fname, 
-          levels, 
-          hca_hail_idx,
-          hsda_fname = 'hsda',
-          dzdr=0,
-          q=None):
+
+def pyart(
+    radar,
+    reflectivity_fname,
+    differential_reflectivity_fname,
+    cross_correlation_ratio_fname,
+    radar_classification_fname,
+    levels,
+    hca_hail_idx,
+    hsda_fname="hsda",
+    dzdr=0,
+    q=None,
+):
     """
 
     wrapper function using pyart object
@@ -45,55 +49,65 @@ def pyart(radar,
     dzdr: float
         calibration value for ZDR
     q: array
-        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
+        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in 
+        https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
     Returns:
     ========
     radar: pyart radar class
         updated with hsda fieldIAG
 
     """
-    #init radar fields
-    empty_radar_field = {'data': np.zeros((radar.nrays, radar.ngates)),
-                     'units':'',
-                     'long_name': '',
-                     'description': '',
-                     'comments': ''}
+    # init radar fields
+    empty_radar_field = {
+        "data": np.zeros((radar.nrays, radar.ngates)),
+        "units": "",
+        "long_name": "",
+        "description": "",
+        "comments": "",
+    }
     radar.add_field(hsda_fname, copy.deepcopy(empty_radar_field))
 
-    #for each sweep
-    radar_altitude = radar.altitude['data'][0]
+    # for each sweep
+    radar_altitude = radar.altitude["data"][0]
     for sweep in range(radar.nsweeps):
-        #load sweep metadata
+        # load sweep metadata
         _, _, gate_z = radar.get_gate_x_y_z(sweep)
-        #run hsda
-        hsda_meta = hsda(radar.get_field(sweep, reflectivity_fname, copy=True).filled(np.nan),
-                            radar.get_field(sweep, differential_reflectivity_fname, copy=True).filled(np.nan),
-                            radar.get_field(sweep, cross_correlation_ratio_fname, copy=True),
-                            radar.get_field(sweep, radar_classification_fname, copy=True),
-                            gate_z + radar_altitude,
-                            levels,
-                            hca_hail_idx,
-                            dzdr,
-                            q)
-        #add data back into pyart object
-        radar.fields[hsda_fname]['data'][radar.get_slice(sweep)] = hsda_meta['data']
+        # run hsda
+        hsda_meta = main(
+            radar.get_field(sweep, reflectivity_fname, copy=True).filled(np.nan),
+            radar.get_field(sweep, differential_reflectivity_fname, copy=True).filled(
+                np.nan
+            ),
+            radar.get_field(sweep, cross_correlation_ratio_fname, copy=True).filled(np.nan),
+            radar.get_field(sweep, radar_classification_fname, copy=True),
+            gate_z + radar_altitude,
+            levels,
+            hca_hail_idx,
+            dzdr,
+            q,
+        )
+        # add data back into pyart object
+        radar.fields[hsda_fname]["data"][radar.get_slice(sweep)] = hsda_meta["data"]
 
-    #add metadata
-    radar.fields[hsda_fname]['data'][radar.get_slice(sweep)] = hsda_meta['data']
+    # add metadata
+    radar.fields[hsda_fname]["data"][radar.get_slice(sweep)] = hsda_meta["data"]
 
     return radar
 
-def pyodim(datasets, 
-          reflectivity_fname, 
-          differential_reflectivity_fname, 
-          cross_correlation_ratio_fname, 
-          radar_classification_fname, 
-          levels, 
-          hca_hail_idx,
-          z_fname = 'z',
-          hsda_fname = 'hsda',
-          dzdr=0,
-          q=None):
+
+def pyodim(
+    datasets,
+    reflectivity_fname,
+    differential_reflectivity_fname,
+    cross_correlation_ratio_fname,
+    radar_classification_fname,
+    levels,
+    hca_hail_idx,
+    z_fname="z",
+    hsda_fname="hsda",
+    dzdr=0,
+    q=None,
+):
     """
 
     wrapper function using pyodim dict
@@ -103,7 +117,7 @@ def pyodim(datasets,
     datasets: list of dicts
         pyodim dataset
     filename: string
-        full path to source 
+        full path to source
     reflectivity_fname: string
         name of reflectivity field
     differential_reflectivity_fname: string
@@ -121,32 +135,39 @@ def pyodim(datasets,
     dzdr: float
         calibration value for ZDR
     q: array
-        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
+        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in 
+        https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
     Returns:
     ========
     datasets: list of dicts
         updated with hsda field
 
     """
-    for sweep in range(len(datasets)):
-        #run hsda
-        hsda_meta = hsda(datasets[sweep][reflectivity_fname].values,
-                            datasets[sweep][differential_reflectivity_fname].values,
-                            datasets[sweep][cross_correlation_ratio_fname].values,
-                            datasets[sweep][radar_classification_fname].values,
-                            datasets[sweep][z_fname].values + datasets[0].attrs['height'],
-                            levels,
-                            hca_hail_idx,
-                            dzdr,
-                            q)
+    for sweep_idx, _ in enumerate(datasets):
+        # run hsda
+        hsda_meta = main(
+            datasets[sweep_idx][reflectivity_fname].values,
+            datasets[sweep_idx][differential_reflectivity_fname].values,
+            datasets[sweep_idx][cross_correlation_ratio_fname].values,
+            datasets[sweep_idx][radar_classification_fname].values,
+            datasets[sweep_idx][z_fname].values + datasets[0].attrs["height"],
+            levels,
+            hca_hail_idx,
+            dzdr,
+            q,
+        )
 
-        #add new fields
-        datasets[sweep] = datasets[sweep].merge(
-            {hsda_fname: (("azimuth", "range"), hsda_meta['data']) })
-        #update metadata for new fields
-        datasets[sweep] = common.add_pyodim_sweep_metadata(datasets[sweep], hsda_fname, hsda_meta)
+        # add new fields
+        datasets[sweep_idx] = datasets[sweep_idx].merge(
+            {hsda_fname: (("azimuth", "range"), hsda_meta["data"])}
+        )
+        # update metadata for new fields
+        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
+            datasets[sweep_idx], hsda_fname, hsda_meta
+        )
 
     return datasets
+
 
 def _smooth_ppi_rays(ppi_data, n):
     """
@@ -180,7 +201,8 @@ def _smooth_ppi_rays(ppi_data, n):
 
     return out
 
-def hsda(
+
+def main(
     reflectivity_sweep,
     differential_reflectivity_sweep,
     cross_correlation_sweep,
@@ -191,7 +213,6 @@ def hsda(
     dzdr=0,
     q=None,
 ):
-
     """
     Wrapper function for HSDA processing
 
@@ -200,11 +221,11 @@ def hsda(
     reflectivity_sweep: 2d ndarray
         reflectivity data in an array with dimensions (azimuth, range)
     differential_reflectivity_sweep: 2d ndarray
-        differential reflectivity data in an array with dimensions (azimuth, range)   
+        differential reflectivity data in an array with dimensions (azimuth, range)
     cross_correlation_sweep: 2d ndarray
-        cross correlation data in an array with dimensions (azimuth, range)   
+        cross correlation data in an array with dimensions (azimuth, range)
     classification_sweep: 2d ndarray
-        classification data in an array with dimensions (azimuth, range)  
+        classification data in an array with dimensions (azimuth, range)
     gate_z_sweep: 2d ndarray
         altitude above sea level (m) of each gate
     levels : list of length 2
@@ -214,12 +235,14 @@ def hsda(
     dzdr:
         offset for differential reflectivity
     q:
-        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
+        quality array of length 3 for [ZH, ZDR, RHV] defined by section 3 in 
+        https://journals.ametsoc.org/view/journals/wefo/24/3/2008waf2222205_1.xml
 
     Returns:
     ========
     hsda: 2d ndarray
-        hsda classe array (1 = small < 25, 2 = large 25-50, 3 = giant > 50 with dimensions (azimuth, range)
+        hsda classe array (1 = small < 25, 2 = large 25-50, 
+        3 = giant > 50 with dimensions (azimuth, range)
 
     """
     # metadata
@@ -229,74 +252,78 @@ def hsda(
 
     # This dummy proofs the user input. The melting level will always
     # be lower in elevation than the negative 25 deg C isotherm
-    wbt_minus25C = max(levels)
-    wbt_0C = min(levels)
+    wbt_minus25c = max(levels)
+    wbt_0c = min(levels)
 
     # check for any valid data
     hail_mask = np.isin(classification_sweep, hca_hail_idx)
-    hsda = np.zeros(classification_sweep.shape)
-    hsda[:] = np.nan #set all to nan, which is masked
+    hsda_data = np.zeros(classification_sweep.shape)
+    hsda_data[:] = np.nan  # set all to nan, which is masked
     # skip processing if there's no valid hail pixels
     if not np.any(hail_mask):
         return {
-            "data": hsda,
+            "data": hsda_data,
             "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
-            "description:": "Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013) doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016) doi:10.1175/JAMC-D-15-0203.1",
+            "description:": ("Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013)"
+                             " doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016)"
+                             " doi:10.1175/JAMC-D-15-0203.1"),
             "comments": classes,
         }
 
     # smooth radar data
     reflectivity_sweep_smooth = _smooth_ppi_rays(reflectivity_sweep, 5)
-    differential_reflectivity_sweep_smooth = _smooth_ppi_rays(differential_reflectivity_sweep, 5)
+    differential_reflectivity_sweep_smooth = _smooth_ppi_rays(
+        differential_reflectivity_sweep, 5
+    )
     cross_correlation_sweep_smooth = _smooth_ppi_rays(cross_correlation_sweep, 5)
-    
+
     # generate quality vector if none exists
     if q is None:
-        q = {"zh":np.ones(hsda.shape), "zdr":np.ones(hsda.shape), "rhv":np.ones(hsda.shape)}
-    
+        q = {
+            "zh": np.ones(hsda_data.shape),
+            "zdr": np.ones(hsda_data.shape),
+            "rhv": np.ones(hsda_data.shape),
+        }
+
     # find all pixels in hca which match the hail classes
     # for each pixel, apply transform
     hail_idx = np.where(hail_mask)
-    
+
     # loop through every pixel
     # check for valid hail pixels
     try:
         # loop through every hail pixel
         for i in np.nditer(hail_idx):
-            
-            #extract altitude
+
+            # extract altitude
             tmp_alt = gate_z_sweep[i]
-            
-            #extract radar data
+
+            # extract radar data
             tmp_zh = reflectivity_sweep_smooth[i]
             tmp_zdr = differential_reflectivity_sweep_smooth[i]
             tmp_rhv = cross_correlation_sweep_smooth[i]
-            
-            #extract quality
+
+            # extract quality
             tmp_q_zh = q["zh"][i]
             tmp_q_zdr = q["zdr"][i]
             tmp_q_rhv = q["rhv"][i]
             tmp_q = np.array([tmp_q_zh, tmp_q_zdr, tmp_q_rhv])
-            
-            #check for valid values
-            if (
-                np.isnan(tmp_zh)
-                or np.isnan(tmp_zdr)
-                or np.isnan(tmp_rhv)
-            ):
+
+            # check for valid values
+            if np.isnan(tmp_zh) or np.isnan(tmp_zdr) or np.isnan(tmp_rhv):
                 continue
-            
+
             # allocate alt field
-            if tmp_alt >= wbt_minus25C:
+            if tmp_alt >= wbt_minus25c:
                 alt_index = 0
-            elif tmp_alt >= wbt_0C:
+            elif tmp_alt >= wbt_0c:
                 alt_index = 1
-            elif tmp_alt >= (wbt_0C - 1000):
+            elif tmp_alt >= (wbt_0c - 1000):
                 alt_index = 2
-            elif tmp_alt >= (wbt_0C - 2000):
+            elif tmp_alt >= (wbt_0c - 2000):
                 alt_index = 3
-            elif tmp_alt >= (wbt_0C - 3000):
+            elif tmp_alt >= (wbt_0c - 3000):
                 alt_index = 4
             else:
                 alt_index = 5
@@ -307,22 +334,24 @@ def hsda(
             mf_h1 = np.array(mf_h1)
             mf_h2 = np.array(mf_h2)
             mf_h3 = np.array(mf_h3)
-            
-            #calculate hsda value
-            pixel_hsda = h_sz(tmp_alt, tmp_zh, tmp_zdr, tmp_rhv, mf_h1, mf_h2, mf_h3, tmp_q, w, dzdr)
-            hsda[i] = pixel_hsda
-        
+
+            # calculate hsda value
+            pixel_hsda = h_sz(
+                tmp_zh, tmp_zdr, tmp_rhv, mf_h1, mf_h2, mf_h3, tmp_q, w
+            )
+            hsda_data[i] = pixel_hsda
+
     except Exception as e:
         print("error in HSDA: ", e)
-         
+
     # propagate nan as needed
-    hsda[np.isnan(reflectivity_sweep)] = np.nan
-    hsda[np.isnan(differential_reflectivity_sweep)] = np.nan
-    hsda[np.isnan(cross_correlation_sweep)] = np.nan
+    hsda_data[np.isnan(reflectivity_sweep)] = np.nan
+    hsda_data[np.isnan(differential_reflectivity_sweep)] = np.nan
+    hsda_data[np.isnan(cross_correlation_sweep)] = np.nan
 
     # generate meta
     hsda_meta = {
-        "data": hsda,
+        "data": hsda_data,
         "units": "NA",
         "long_name": "Hail Size Discrimination Algorithm",
         "comments": classes,
@@ -330,16 +359,14 @@ def hsda(
     # return radar object
     return hsda_meta
 
-@jit(nopython=True)
-def h_sz(alt, zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w, dzdr):
 
+@jit(nopython=True)
+def h_sz(zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w):
     """
     calculates the hail size class for a radar voxel
 
     Parameters:
     ===========
-    alt: float
-        altitude of voxel (m) ASL
     zh: float
         zh value for voxel (dbz)
     zdr: float
@@ -349,15 +376,14 @@ def h_sz(alt, zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w, dzdr):
     mf_h1: array of floats of length 4
         membership function shape for small hail
     mf_h2: array of floats of length 4
-        membership function shape for large hail      
+        membership function shape for large hail
     mf_h3: array of floats of length 4
         membership function shape for giant hail
     q: array of floats of length 3
         [zh quality, zdr quality, rhv quality]
     w: array of floats of length 3
-        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, rhv weight in HSDA for altitude]
-    dzdr: float
-        offset for differential reflectivity
+        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, 
+        rhv weight in HSDA for altitude]
 
     Returns:
     ========
@@ -367,18 +393,18 @@ def h_sz(alt, zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w, dzdr):
     """
 
     # small hail
-    h1_ag = calc_ag(mf_h1, zh, zdr, rhv, q, w, dzdr)
+    h1_ag = calc_ag(mf_h1, zh, zdr, rhv, q, w)
     # large hail
-    h2_ag = calc_ag(mf_h2, zh, zdr, rhv, q, w, dzdr)
+    h2_ag = calc_ag(mf_h2, zh, zdr, rhv, q, w)
     # giant hail
-    h3_ag = calc_ag(mf_h3, zh, zdr, rhv, q, w, dzdr)
+    h3_ag = calc_ag(mf_h3, zh, zdr, rhv, q, w)
 
     # find last (largest) max ag
     ag_vec = np.array([h1_ag, h2_ag, h3_ag])
     max_ag = np.nanmax(ag_vec)
     out = np.where(ag_vec == max_ag)
     if len(out) == 0:
-        out = 0 #entirely nan/invalid data, so no hail assignment
+        out = 0  # entirely nan/invalid data, so no hail assignment
     else:
         out = out[0][-1] + 1  # last item, using 1,2,3 indexing
         # rule 2
@@ -387,12 +413,12 @@ def h_sz(alt, zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w, dzdr):
         # rule 3
         if out > 1 and zdr >= 2:
             out = 1
-    
+
     return out
 
-@jit(nopython=True)
-def calc_ag(mf, zh, zdr, rhv, q, w, dzdr):
 
+@jit(nopython=True)
+def calc_ag(mf, zh, zdr, rhv, q, w):
     """
     calculates the polarmetic aggregates for a hail size class
 
@@ -409,14 +435,13 @@ def calc_ag(mf, zh, zdr, rhv, q, w, dzdr):
     rhv: float
         CC value for voxel
     mf: array of floats of length 4
-        membership function shape  
+        membership function shape
     q: array of floats of length 3
         [zh quality, zdr quality, rhv quality]
     w: array of floats of length 3
-        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, rhv weight in HSDA for altitude]
-    dzdr: float
-        zdr offset
-        
+        [zh weight in HSDA for altitude, zdr weight in HSDA for altitude, 
+        rhv weight in HSDA for altitude]
+
 
     Returns:
     ========
@@ -430,24 +455,29 @@ def calc_ag(mf, zh, zdr, rhv, q, w, dzdr):
     w_zh = w[0]
     w_zdr = w[1]
     w_rhv = w[2]
-    zh_mf_coeff = mf[0,:]
-    zdr_mf_coeff = mf[1,:]
-    rhv_mf_coeff = mf[2,:]
-    
+    zh_mf_coeff = mf[0, :]
+    zdr_mf_coeff = mf[1, :]
+    rhv_mf_coeff = mf[2, :]
+
     zh_mf = trapmf(zh, zh_mf_coeff[0], zh_mf_coeff[1], zh_mf_coeff[2], zh_mf_coeff[3])
-    zdr_mf = trapmf(zdr, zdr_mf_coeff[0], zdr_mf_coeff[1], zdr_mf_coeff[2], zdr_mf_coeff[3])
-    rhv_mf = trapmf(rhv, rhv_mf_coeff[0], rhv_mf_coeff[1], rhv_mf_coeff[2], rhv_mf_coeff[3])
+    zdr_mf = trapmf(
+        zdr, zdr_mf_coeff[0], zdr_mf_coeff[1], zdr_mf_coeff[2], zdr_mf_coeff[3]
+    )
+    rhv_mf = trapmf(
+        rhv, rhv_mf_coeff[0], rhv_mf_coeff[1], rhv_mf_coeff[2], rhv_mf_coeff[3]
+    )
 
     # rule 1
     if np.min(np.array([zh_mf, zdr_mf, rhv_mf])) < 0.2:
         out = 0
     else:
         # calc h_ag
-        out = ((w_zh * q_zh * zh_mf) +
-                (w_zdr * q_zdr * zdr_mf) +
-                (w_rhv * q_rhv * rhv_mf)) / (w_zh * q_zh + w_zdr * q_zdr + w_rhv * q_rhv)
+        out = (
+            (w_zh * q_zh * zh_mf) + (w_zdr * q_zdr * zdr_mf) + (w_rhv * q_rhv * rhv_mf)
+        ) / (w_zh * q_zh + w_zdr * q_zdr + w_rhv * q_rhv)
 
     return out
+
 
 @jit(nopython=True)
 def trapmf(x, a, b, c, d):

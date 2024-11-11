@@ -399,8 +399,8 @@ def main(
         raise ValueError("Missing levels data for freezing level and -20C level")
 
     # Rain/Hail dBZ boundaries
-    Zl = 40
-    Zu = 50
+    z_l = 40
+    z_u = 50
 
     # This dummy proofs the user input. The melting level will always
     # be lower in elevation than the negative 20 deg C isotherm
@@ -421,7 +421,8 @@ def main(
         )
     elif len(elevation_dataset) < minimum_sweeps_raise_warning:
         raise Warning(
-            "Number of sweep is less than {minimum_sweeps_raise_warning} and not recommended for MESH calculations"
+            ("Number of sweep is less than {minimum_sweeps_raise_warning} "
+            "and not recommended for MESH calculations")
         )
     # sweep must be sorted from lowest to highest elevation
     dx = np.diff(elevation_dataset)
@@ -462,11 +463,12 @@ def main(
         # apply C band correction
         if radar_band == "C" and correct_cband_refl:
             reflectivity_dataset[i] = reflectivity_dataset[i] * 1.113 - 3.929
-            hail_refl_correction_description = "C band hail reflectivity correction applied from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
+            hail_refl_correction_description = ("C band hail reflectivity correction applied"
+                                                " from Brook et al. 2023 https://arxiv.org/abs/2306.12016")
         # calc weights for hail kenetic energy
-        reflectivity_weights = (reflectivity_dataset[i] - Zl) / (Zu - Zl)
-        reflectivity_weights[reflectivity_dataset[i] <= Zl] = 0
-        reflectivity_weights[reflectivity_dataset[i] >= Zu] = 1
+        reflectivity_weights = (reflectivity_dataset[i] - z_l) / (z_u - z_l)
+        reflectivity_weights[reflectivity_dataset[i] <= z_l] = 0
+        reflectivity_weights[reflectivity_dataset[i] >= z_u] = 1
         reflectivity_weights[reflectivity_weights < 0] = 0
         reflectivity_weights[reflectivity_weights > 1] = 1
         # limit on DBZ

@@ -104,7 +104,9 @@ def add_pyodim_sweep_metadata(
 
     for key_name in metadata_dict.keys():
         if key_name != skip_key:
-            sweep_ds.assign_attrs(key_name=metadata_dict[key_name])
+            attrs = sweep_ds.attrs
+            attrs[key_name] = metadata_dict[key_name]
+            sweep_ds.attrs = attrs
     return sweep_ds
 
 

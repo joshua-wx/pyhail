@@ -166,9 +166,7 @@ def pyodim(
     radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
         {hacc_fname: (("azimuth", "range"), hacc_dict["data"])}
     )
-    radar_datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
-        radar_datasets[sweep_idx], hacc_fname, hacc_dict
-    )
+    # note: field metadata is not added to the pyodim datasets
 
     return radar_datasets
 

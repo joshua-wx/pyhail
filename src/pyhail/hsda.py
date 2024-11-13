@@ -161,10 +161,7 @@ def pyodim(
         datasets[sweep_idx] = datasets[sweep_idx].merge(
             {hsda_fname: (("azimuth", "range"), hsda_meta["data"])}
         )
-        # update metadata for new fields
-        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
-            datasets[sweep_idx], hsda_fname, hsda_meta
-        )
+        # note: field metadata is not added to the pyodim datasets
 
     return datasets
 

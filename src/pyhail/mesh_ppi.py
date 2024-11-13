@@ -242,24 +242,14 @@ def pyodim(
             posh_fname: (("azimuth", "range"), posh_dict["data"]),
         }
     )
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
-        datasets[sweep0_idx], shi_fname, shi_dict
-    )
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
-        datasets[sweep0_idx], mesh_fname, mesh_dict
-    )
-    datasets[sweep0_idx] = common.add_pyodim_sweep_metadata(
-        datasets[sweep0_idx], posh_fname, posh_dict
-    )
 
     # add 3D field and metadata
     for sweep_idx, _ in enumerate(datasets):
         datasets[sweep_idx] = datasets[sweep_idx].merge(
             {ke_fname: (("azimuth", "range"), ke_dict["data"][sweep_idx])}
         )
-        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
-            datasets[sweep_idx], ke_fname, ke_dict
-        )
+    
+    # note: field metadata is not added to the pyodim datasets
 
     return datasets
 

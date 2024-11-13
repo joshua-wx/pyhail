@@ -81,7 +81,7 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
 
 
 def add_pyodim_sweep_metadata(
-    sweep_ds, variable_name, metadata_dict, skip_key="data"
+    sweep_ds, metadata_dict, skip_key="data"
 ):
     """
     For each key in metadata_dict, a new attribute is created in sweep_ds with the key value
@@ -90,8 +90,6 @@ def add_pyodim_sweep_metadata(
     ----------
     sweep_ds : xarray data
         sweep xarray dataset
-    variable_name: string
-        name of variable in sweep_ds to update
     metadata_dict: dict
         dictionary containing keys and values to add into sweep_ds
     skip_key: string
@@ -106,7 +104,7 @@ def add_pyodim_sweep_metadata(
 
     for key_name in metadata_dict.keys():
         if key_name != skip_key:
-            sweep_ds[variable_name].assign_attrs(key_name=metadata_dict[key_name])
+            sweep_ds.assign_attrs(key_name=metadata_dict[key_name])
     return sweep_ds
 
 

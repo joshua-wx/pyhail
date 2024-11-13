@@ -125,13 +125,7 @@ def pyodim(
             }
         )
 
-        # update metadata for new fields
-        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
-            datasets[sweep_idx], hdr_fname, hdr_meta
-        )
-        datasets[sweep_idx] = common.add_pyodim_sweep_metadata(
-            datasets[sweep_idx], hdr_size_fname, hdr_meta
-        )
+        # note: field metadata is not added to the pyodim datasets
 
     return datasets
 

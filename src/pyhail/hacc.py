@@ -100,7 +100,7 @@ def pyart(
 
 
 def pyodim(
-    radar_datasets,
+    datasets,
     reflectivity_fname,
     sweep_idx,
     mesh_idx,
@@ -147,28 +147,30 @@ def pyodim(
     """
     if hsda_fname is None:
         hsda_field = None
-    elif hsda_fname not in radar_datasets[sweep_idx].keys():
+    elif hsda_fname not in datasets[sweep_idx].keys():
         hsda_field = None
     else:
-        hsda_field = radar_datasets[sweep_idx][hsda_fname].values
+        hsda_field = datasets[sweep_idx][hsda_fname].values
     # run retrieval
     hacc_dict = main(
-        radar_datasets[sweep_idx][reflectivity_fname].values,
+        datasets[sweep_idx][reflectivity_fname].values,
         hsda_field,
-        radar_datasets[mesh_idx][mesh_fname].values,
-        radar_datasets[sweep_idx][z_fname].values,
+        datasets[mesh_idx][mesh_fname].values,
+        datasets[sweep_idx][z_fname].values,
         fz_level,
         pressure,
         sp_reflectivity_threshold=sp_reflectivity_threshold,
     )
 
     # update data and metadata
-    radar_datasets[sweep_idx] = radar_datasets[sweep_idx].merge(
+    datasets[sweep_idx] = datasets[sweep_idx].merge(
         {hacc_fname: (("azimuth", "range"), hacc_dict["data"])}
     )
-    # note: field metadata is not added to the pyodim datasets
-
-    return radar_datasets
+    # metadata
+    datasets[sweep_idx][hacc_fname] = common.add_pyodim_metadata(
+        datasets[sweep_idx][hacc_fname], hacc_dict
+    )
+    return datasets
 
 
 def main(

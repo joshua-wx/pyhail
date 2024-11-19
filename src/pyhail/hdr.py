@@ -21,7 +21,6 @@ import numpy as np
 from pyhail import common
 
 
-
 def pyart(
     radar,
     reflectivity_fname,
@@ -124,9 +123,13 @@ def pyodim(
                 hdr_size_fname: (("azimuth", "range"), hdr_size_meta["data"]),
             }
         )
-
-        # note: field metadata is not added to the pyodim datasets
-
+        # metadata
+        datasets[sweep_idx][hdr_fname] = common.add_pyodim_metadata(
+            datasets[sweep_idx][hdr_fname], hdr_meta
+        )
+        datasets[sweep_idx][hdr_size_fname] = common.add_pyodim_metadata(
+            datasets[sweep_idx][hdr_size_fname], hdr_size_meta
+        )
     return datasets
 
 
@@ -168,8 +171,10 @@ def main(reflectivity_sweep, differential_reflectivity_sweep):
         "data": hdr_data,
         "units": "dB",
         "long_name": "Hail Differential Reflectivity",
-        "description": ("Hail Differential Reflectivity developed by Aydin and Zhao (1990) "
-                        "doi:10.1109/TGRS.1990.572906"),
+        "description": (
+            "Hail Differential Reflectivity developed by Aydin and Zhao (1990) "
+            "doi:10.1109/TGRS.1990.572906"
+        ),
         "comments": "",
     }
 
@@ -177,8 +182,10 @@ def main(reflectivity_sweep, differential_reflectivity_sweep):
         "data": hdr_size,
         "units": "mm",
         "long_name": "HDR hail size estimate",
-        "description": ("Hail Differential Reflectivity Hail Size developed by Depue et al. (2009) "
-                        "doi:10.1175/JAM2529.1"),
+        "description": (
+            "Hail Differential Reflectivity Hail Size developed by Depue et al. (2009) "
+            "doi:10.1175/JAM2529.1"
+        ),
         "comments": "transform from HDR (dB) to hail size (mm); function scaled from paper figure",
     }
 

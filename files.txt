@@ -1,2 +1,0 @@
-/scratch/en0/jss548/miniforge3/envs/openradar/lib/python3.12/site-packages/pyhail-3.0.2-py3.12.egg
-/scratch/en0/jss548/miniforge3/envs/openradar/bin/f2py

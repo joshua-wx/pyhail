@@ -243,14 +243,14 @@ def pyodim(
         }
     )
     datasets[0][shi_fname] = common.add_pyodim_metadata(
-                datasets[0][shi_fname], shi_dict
-            )
+        datasets[0][shi_fname], shi_dict
+    )
     datasets[0][mesh_fname] = common.add_pyodim_metadata(
-                datasets[0][mesh_fname], mesh_dict
-            )
+        datasets[0][mesh_fname], mesh_dict
+    )
     datasets[0][posh_fname] = common.add_pyodim_metadata(
-                datasets[0][posh_fname], posh_dict
-            )
+        datasets[0][posh_fname], posh_dict
+    )
 
     # add 3D field and metadata
     for sweep_idx, _ in enumerate(datasets):
@@ -259,8 +259,8 @@ def pyodim(
         )
         # metadata
         datasets[sweep_idx][ke_fname] = common.add_pyodim_metadata(
-                datasets[sweep_idx][ke_fname], ke_dict
-            )
+            datasets[sweep_idx][ke_fname], ke_dict
+        )
 
     return datasets
 
@@ -321,7 +321,7 @@ def _calc_dz(column_z):
     dz : 1darray
         Difference between altitude elements
     """
-
+    # need at least two values
     dz = []
     n_ppi = len(column_z)
     for i in range(n_ppi):
@@ -422,8 +422,10 @@ def main(
         )
     elif len(elevation_dataset) < minimum_sweeps_raise_warning:
         raise Warning(
-            ("Number of sweep is less than {minimum_sweeps_raise_warning} "
-            "and not recommended for MESH calculations")
+            (
+                f"Number of sweep is less than {minimum_sweeps_raise_warning} "
+                "and not recommended for MESH calculations"
+            )
         )
     # sweep must be sorted from lowest to highest elevation
     dx = np.diff(elevation_dataset)
@@ -464,8 +466,10 @@ def main(
         # apply C band correction
         if radar_band == "C" and correct_cband_refl:
             reflectivity_dataset[i] = reflectivity_dataset[i] * 1.113 - 3.929
-            hail_refl_correction_description = ("C band hail reflectivity correction applied"
-                                                " from Brook et al. 2023 https://arxiv.org/abs/2306.12016")
+            hail_refl_correction_description = (
+                "C band hail reflectivity correction applied"
+                " from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
+            )
         # calc weights for hail kenetic energy
         reflectivity_weights = (reflectivity_dataset[i] - z_l) / (z_u - z_l)
         reflectivity_weights[reflectivity_dataset[i] <= z_l] = 0
@@ -488,19 +492,26 @@ def main(
     )  # list (dim: range) where each element represents a range bin, 1d array (dim: elevation) where each element represents a sweep, altitude dz for shi integration (m)
     s_lookup_dataset = (
         []
-    )  # list (dim: range) where each element represents a range bin, a 1d array (dim: elevation[1:]) of the index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
+    )  # list (dim: range) where each element represents an the range bin index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
     for rg_idx in range(sweep0_nbins):
         s_lookup = [0]
         column_z = [z_dataset[0][rg_idx]]
         for sweep_idx in range(1, n_ppi, 1):
             dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
-            # skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths)
+            # skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths and when base scan max range is greater than all other scans)
             if dist_array[closest_rng_idx] < column_shift_maximum:
                 s_lookup.append(closest_rng_idx)
                 column_z.append(z_dataset[sweep_idx][closest_rng_idx])
-        s_lookup_dataset.append(np.array(s_lookup))
-        dz_dataset.append(_calc_dz(column_z))
+            # else:
+            #     print('skipping', 'distance check', dist_array[closest_rng_idx], 'range idx', rg_idx, 'sweep idx', sweep_idx)
+        # check if at least two valid values in the column exists
+        if len(s_lookup) > 1:
+            s_lookup_dataset.append(np.array(s_lookup))
+            dz_dataset.append(_calc_dz(column_z))
+        else:
+            s_lookup_dataset.append(None)
+            dz_dataset.append(None)
 
     # calculate shi on lowest sweep coordinates
     shi = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])))
@@ -514,6 +525,10 @@ def main(
                 s_dataset[0][rg_idx] < min_range * 1000
                 or s_dataset[0][rg_idx] > max_range * 1000
             ):
+                shi_mask[az_idx, rg_idx] = True
+                continue
+            # check if a valid column exists at this range
+            if s_lookup_dataset[rg_idx] is None:
                 shi_mask[az_idx, rg_idx] = True
                 continue
             # init shi elements

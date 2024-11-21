@@ -518,6 +518,7 @@ def main(
     shi_mask = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])), dtype=bool)
     # loop through each ray in the lowest sweep
     for az_idx in range(sweep0_nrays):
+        sweep0_az = azimuth_dataset[0][az_idx]
         # loop through each range bin for the ray
         for rg_idx in range(sweep0_nbins):
             # check if sweep0 (lowest) range is outside of limits
@@ -537,16 +538,34 @@ def main(
             ]  # HKE * WT
             # loop through the sweep entries in the lookup table. ASSUMES ORDERED SWEEPS, AS IT WILL REMOVE BIRDBATH SCANS THAT FALL AT THE END OF THE VOLUME
             for sweep_idx in range(1, len(s_lookup_dataset[rg_idx]), 1):
+                #check if sweep azimuth value matches sweep0
+                search_azi = True
+                try:
+                    if sweep0_az == azimuth_dataset[sweep_idx][az_idx]:
+                        search_azi = False
+                except Exception as e:
+                    #will fall if index exceeds array size
+                    pass
+                if search_azi:
+                    # if not, find nearest azi
+                    closest_az_idx = np.argmin(np.abs(azimuth_dataset[sweep_idx]-sweep0_az))
+                    #if the azimuth differs by more than 1 degree from sweep0, use a value of -999 in the shi calculation.
+                    if azimuth_dataset[sweep_idx][closest_az_idx] - sweep0_az > 1:
+                        column_shi_elements.append(-999)
+                        continue
+                else:
+                    closest_az_idx = az_idx
                 # find closest point using great circle arc to sweep0 (lowest) location
-                closest_idx = s_lookup_dataset[rg_idx][sweep_idx]
+                closest_rng_idx = s_lookup_dataset[rg_idx][sweep_idx]
                 column_shi_elements.append(
-                    hail_ke_dataset[sweep_idx][az_idx, closest_idx]
-                    * wt_dataset[sweep_idx][closest_idx]
+                    hail_ke_dataset[sweep_idx][closest_az_idx, closest_rng_idx]
+                    * wt_dataset[sweep_idx][closest_rng_idx]
                 )
             # insert into SHI if there's a valid value
             if np.max(column_shi_elements) > 0:
+                valid_sweep_idx = column_shi_elements != -999
                 shi[az_idx, rg_idx] = 0.1 * np.sum(
-                    column_shi_elements * dz_dataset[rg_idx]
+                    column_shi_elements * dz_dataset[rg_idx][valid_sweep_idx]
                 )
 
     # calc maximum estimated severe hail (mm)

@@ -117,23 +117,8 @@ def validate_radar_inputs(
         )
     
     # Check for reasonable value ranges
-    zh_finite = reflectivity[np.isfinite(reflectivity)]
-    if zh_finite.size > 0:
-        if np.min(zh_finite) < -50 or np.max(zh_finite) > 100:
-            warnings.warn(
-                f"Reflectivity values outside typical range [-50, 100] dBZ: "
-                f"[{np.min(zh_finite):.1f}, {np.max(zh_finite):.1f}]",
-                UserWarning
-            )
-    
-    zdr_finite = differential_reflectivity[np.isfinite(differential_reflectivity)]
-    if zdr_finite.size > 0:
-        if np.min(zdr_finite) < -10 or np.max(zdr_finite) > 10:
-            warnings.warn(
-                f"Differential reflectivity values outside typical range [-10, 10] dB: "
-                f"[{np.min(zdr_finite):.1f}, {np.max(zdr_finite):.1f}]",
-                UserWarning
-            )
+    # Note: Quality control and outlier detection should be handled
+    # at a higher level before calling HDR processing functions
 
 
 @jit(nopython=True, cache=True)

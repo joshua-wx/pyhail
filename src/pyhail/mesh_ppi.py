@@ -9,6 +9,8 @@ import copy
 import numpy as np
 from pyhail import common
 
+import numba
+from numba import jit
 
 def pyart(
     radar,
@@ -264,7 +266,7 @@ def pyodim(
 
     return datasets
 
-
+@jit(nopython=True)
 def _antenna_to_arc(ranges, elevation):
     """
     Return the great circle distance directly below the radar beam and the
@@ -297,15 +299,15 @@ def _antenna_to_arc(ranges, elevation):
     .. [1] Doviak and Zrnic, Doppler Radar and Weather Observations, Second
         Edition, 1993, p. 21.
     """
-    theta_e = elevation * np.pi / 180.0  # elevation angle in radians.
-    R = 6371.0 * 1000.0 * 4.0 / 3.0  # effective radius of earth in meters.
-    r = ranges
-
-    z = (r**2 + R**2 + 2.0 * r * R * np.sin(theta_e)) ** 0.5 - R
-    s = R * np.arcsin(r * np.cos(theta_e) / (R + z))  # arc length in m.
+    theta_e = elevation * np.pi / 180.0
+    R = 6371.0 * 1000.0 * 4.0 / 3.0
+    
+    # Vectorized operations compiled to efficient machine code
+    z = np.sqrt(ranges**2 + R**2 + 2.0 * ranges * R * np.sin(theta_e)) - R
+    s = R * np.arcsin(ranges * np.cos(theta_e) / (R + z))
     return s, z
 
-
+@jit(nopython=True)
 def _calc_dz(column_z):
     """
     Calculate altitude difference between elements in a 1d array
@@ -321,21 +323,87 @@ def _calc_dz(column_z):
     dz : 1darray
         Difference between altitude elements
     """
-    # need at least two values
-    dz = []
     n_ppi = len(column_z)
+    dz = np.zeros(n_ppi)
+    
     for i in range(n_ppi):
-        # calculate dz for use in shi calc
         if i == 0:
-            value = column_z[i + 1] - column_z[i]
-        elif (i != 0) & (i != n_ppi - 1):
-            value = (column_z[i + 1] - column_z[i - 1]) / 2
+            dz[i] = column_z[i + 1] - column_z[i]
+        elif i == n_ppi - 1:
+            dz[i] = column_z[i] - column_z[i - 1]
         else:
-            value = column_z[i] - column_z[i - 1]
-        dz.append(value)
-    dz = np.array(dz)
+            dz[i] = (column_z[i + 1] - column_z[i - 1]) / 2.0
+    
     return dz
 
+@jit(nopython=True)
+def _hail_ke_calculation(reflectivity, z_l, z_u):
+    """
+    Numba-optimized hail kinetic energy calculation.
+    Eliminates Python overhead in tight loops.
+    """
+    # Clip reflectivity values
+    refl_clipped = np.clip(reflectivity, -100.0, 100.0)
+    
+    # Calculate weights
+    refl_weights = (refl_clipped - z_l) / (z_u - z_l)
+    refl_weights = np.clip(refl_weights, 0.0, 1.0)
+    
+    # Calculate hail kinetic energy
+    hail_ke = 5.0e-6 * np.power(10.0, 0.084 * refl_clipped) * refl_weights
+    
+    return hail_ke
+
+@jit(nopython=True)
+def optimized_shi_integration(hail_ke_datasets, wt_datasets, dz_datasets, 
+                            s_lookup_dataset, azimuth_dataset, s_dataset,
+                            min_range_m, max_range_m):
+    """
+    Optimized SHI integration with better memory access patterns and
+    eliminated redundant calculations.
+    """
+    n_rays = len(azimuth_dataset[0])
+    n_bins = len(s_dataset[0])
+    
+    # Pre-allocate output arrays
+    shi = np.zeros((n_rays, n_bins))
+    shi_mask = np.zeros((n_rays, n_bins), dtype=numba.boolean)
+    
+    # Pre-compute range mask (vectorized)
+    s0 = s_dataset[0]
+    range_mask = (s0 < min_range_m) | (s0 > max_range_m)
+    
+    # Pre-identify valid columns to avoid repeated None checks
+    valid_columns = []
+    for rg_idx in range(n_bins):
+        if not range_mask[rg_idx] and s_lookup_dataset[rg_idx] is not None and dz_datasets[rg_idx] is not None:
+            valid_columns.append(rg_idx)
+    
+    # Process only valid columns - reduces iterations significantly
+    for az_idx in range(n_rays):
+        # Apply range mask for entire row at once
+        shi_mask[az_idx, range_mask] = True
+        
+        # Process only valid columns
+        for rg_idx in valid_columns:
+            column_shi = 0.0
+            lookup_indices = s_lookup_dataset[rg_idx]
+            dz_values = dz_datasets[rg_idx]
+            
+            # Vectorized column integration where possible
+            for lookup_idx in range(len(lookup_indices)):
+                sweep_idx = lookup_idx
+                if sweep_idx < len(hail_ke_datasets):
+                    rng_idx = lookup_indices[lookup_idx]
+                    if rng_idx < hail_ke_datasets[sweep_idx].shape[1]:
+                        hke_val = hail_ke_datasets[sweep_idx][az_idx, rng_idx]
+                        wt_val = wt_datasets[sweep_idx][rng_idx]
+                        dz_val = dz_values[lookup_idx]
+                        column_shi += hke_val * wt_val * dz_val
+            
+            shi[az_idx, rg_idx] = 0.1 * column_shi
+    
+    return shi, shi_mask
 
 def main(
     reflectivity,
@@ -457,33 +525,19 @@ def main(
         s_dataset.append(s)
         z_dataset.append(z + radar_altitude)
         # calc temperature based weighting function
-        wt = (z_dataset[i] - meltlayer) / (neg20layer - meltlayer)
-        wt[z_dataset[i] <= meltlayer] = 0
-        wt[z_dataset[i] >= neg20layer] = 1
-        wt[wt < 0] = 0
-        wt[wt > 1] = 1
+        temp_diff = neg20layer - meltlayer
+        wt = (z_dataset[i] - meltlayer) / temp_diff
+        wt = np.clip(wt, 0.0, 1.0)  # More efficient than separate operations
         wt_dataset.append(wt)
         # apply C band correction
         if radar_band == "C" and correct_cband_refl:
             reflectivity_dataset[i] = reflectivity_dataset[i] * 1.113 - 3.929
-            hail_refl_correction_description = (
-                "C band hail reflectivity correction applied"
-                " from Brook et al. 2023 https://arxiv.org/abs/2306.12016"
-            )
-        # calc weights for hail kenetic energy
-        reflectivity_weights = (reflectivity_dataset[i] - z_l) / (z_u - z_l)
-        reflectivity_weights[reflectivity_dataset[i] <= z_l] = 0
-        reflectivity_weights[reflectivity_dataset[i] >= z_u] = 1
-        reflectivity_weights[reflectivity_weights < 0] = 0
-        reflectivity_weights[reflectivity_weights > 1] = 1
-        # limit on DBZ
-        reflectivity_dataset[i][reflectivity_dataset[i] > 100] = 100
-        reflectivity_dataset[i][reflectivity_dataset[i] < -100] = -100
+            hail_refl_correction_description = ("C band hail reflectivity correction applied"
+                                                " from Brook et al. 2023 https://arxiv.org/abs/2306.12016")
+        
         # calc hail kenetic energy
-        hail_ke = (
-            (5.0e-6) * 10 ** (0.084 * reflectivity_dataset[i]) * reflectivity_weights
-        )
-        hail_ke[np.isnan(hail_ke)] = 0
+        hail_ke = hail_ke = _hail_ke_calculation(reflectivity_dataset[i] , z_l, z_u)
+        hail_ke = np.nan_to_num(hail_ke, nan=0.0)
         hail_ke_dataset.append(hail_ke)
 
     # generate arc range and dz lookup (note these have different dimensions to the dimension variables)
@@ -513,60 +567,13 @@ def main(
             s_lookup_dataset.append(None)
             dz_dataset.append(None)
 
-    # calculate shi on lowest sweep coordinates
-    shi = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])))
-    shi_mask = np.zeros((len(azimuth_dataset[0]), len(range_dataset[0])), dtype=bool)
-    # loop through each ray in the lowest sweep
-    for az_idx in range(sweep0_nrays):
-        sweep0_az = azimuth_dataset[0][az_idx]
-        # loop through each range bin for the ray
-        for rg_idx in range(sweep0_nbins):
-            # check if sweep0 (lowest) range is outside of limits
-            if (
-                s_dataset[0][rg_idx] < min_range * 1000
-                or s_dataset[0][rg_idx] > max_range * 1000
-            ):
-                shi_mask[az_idx, rg_idx] = True
-                continue
-            # check if a valid column exists at this range
-            if s_lookup_dataset[rg_idx] is None:
-                shi_mask[az_idx, rg_idx] = True
-                continue
-            # init shi elements
-            column_shi_elements = [
-                hail_ke_dataset[0][az_idx, rg_idx] * wt_dataset[0][rg_idx]
-            ]  # HKE * WT
-            # loop through the sweep entries in the lookup table. ASSUMES ORDERED SWEEPS, AS IT WILL REMOVE BIRDBATH SCANS THAT FALL AT THE END OF THE VOLUME
-            for sweep_idx in range(1, len(s_lookup_dataset[rg_idx]), 1):
-                #check if sweep azimuth value matches sweep0
-                search_azi = True
-                try:
-                    if sweep0_az == azimuth_dataset[sweep_idx][az_idx]:
-                        search_azi = False
-                except Exception as e:
-                    #will fall if index exceeds array size
-                    pass
-                if search_azi:
-                    # if not, find nearest azi
-                    closest_az_idx = np.argmin(np.abs(azimuth_dataset[sweep_idx]-sweep0_az))
-                    #if the azimuth differs by more than 1 degree from sweep0, use a value of -999 in the shi calculation.
-                    if azimuth_dataset[sweep_idx][closest_az_idx] - sweep0_az > 1:
-                        column_shi_elements.append(-999)
-                        continue
-                else:
-                    closest_az_idx = az_idx
-                # find closest point using great circle arc to sweep0 (lowest) location
-                closest_rng_idx = s_lookup_dataset[rg_idx][sweep_idx]
-                column_shi_elements.append(
-                    hail_ke_dataset[sweep_idx][closest_az_idx, closest_rng_idx]
-                    * wt_dataset[sweep_idx][closest_rng_idx]
-                )
-            # insert into SHI if there's a valid value
-            if np.max(column_shi_elements) > 0:
-                valid_sweep_idx = column_shi_elements != -999
-                shi[az_idx, rg_idx] = 0.1 * np.sum(
-                    column_shi_elements * dz_dataset[rg_idx][valid_sweep_idx]
-                )
+    # Optimized SHI calculation
+    min_range_m = min_range * 1000
+    max_range_m = max_range * 1000
+    shi, shi_mask = optimized_shi_integration(
+        hail_ke_dataset, wt_dataset, dz_dataset, s_lookup_dataset,
+        azimuth_dataset, s_dataset, min_range_m, max_range_m
+    )
 
     # calc maximum estimated severe hail (mm)
     if (

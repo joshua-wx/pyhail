@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/joshua-wx/pyhail)
+
 # Python Hail Retrieval Toolkit (pyhail) ⛈️📡🧊
 
 This toolkit provides a collection of hail retrieval techniques for weather radar data.

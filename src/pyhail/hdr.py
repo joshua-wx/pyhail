@@ -20,8 +20,6 @@ import copy
 import numpy as np
 from pyhail import common
 
-
-
 def pyart(
     radar,
     reflectivity_fname,

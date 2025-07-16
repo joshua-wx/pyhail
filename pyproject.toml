@@ -17,7 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["radar", "weather", "meteorology", "calibration"]
-dependencies=["numpy", "scipy", "numba"]
+dependencies=["numpy", "scipy", "numba>=0.59.1"]
 
 [project.urls]
 "Homepage" = "https://github.com/joshua-wx/pyhail"

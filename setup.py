@@ -17,7 +17,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="pyhail",
-    version="3.2.0",
+    version="3.2.1",
     description="Python Hail Weather Radar Retrievals",
     long_description=long_description,
     long_description_content_type="text/markdown",

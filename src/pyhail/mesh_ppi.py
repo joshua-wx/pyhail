@@ -538,7 +538,7 @@ def main(
                                                 " from Brook et al. 2023 https://arxiv.org/abs/2306.12016")
         
         # calc hail kenetic energy
-        hail_ke = hail_ke = _hail_ke_calculation(reflectivity_dataset[i] , z_l, z_u)
+        hail_ke = _hail_ke_calculation(reflectivity_dataset[i] , z_l, z_u)
         hail_ke = np.nan_to_num(hail_ke, nan=0.0)
         hail_ke_dataset.append(hail_ke)
 
@@ -566,7 +566,7 @@ def main(
             s_lookup_dataset.append(np.array(s_lookup))
             dz_dataset.append(_calc_dz(column_z))
         else:
-            s_lookup_dataset.append(np.empty(0, dtype=np.int32))
+            s_lookup_dataset.append(np.empty(0, dtype=np.int64))
             dz_dataset.append(np.empty(0, dtype=np.float64))
 
     # Optimized SHI calculation

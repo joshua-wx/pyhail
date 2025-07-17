@@ -373,10 +373,12 @@ def optimized_shi_integration(hail_ke_datasets, wt_datasets, dz_datasets,
     s0 = s_dataset[0]
     range_mask = (s0 < min_range_m) | (s0 > max_range_m)
     
-    # Pre-identify valid columns to avoid repeated None checks
+    # Pre-identify valid columns to avoid repeated empty checks
     valid_columns = []
     for rg_idx in range(n_bins):
-        if not range_mask[rg_idx] and s_lookup_dataset[rg_idx] is not None and dz_datasets[rg_idx] is not None:
+        if (not range_mask[rg_idx]
+            and s_lookup_dataset[rg_idx].size > 0
+            and dz_datasets[rg_idx].size > 0):
             valid_columns.append(rg_idx)
     
     # Process only valid columns - reduces iterations significantly
@@ -564,8 +566,8 @@ def main(
             s_lookup_dataset.append(np.array(s_lookup))
             dz_dataset.append(_calc_dz(column_z))
         else:
-            s_lookup_dataset.append(None)
-            dz_dataset.append(None)
+            s_lookup_dataset.append(np.empty(0, dtype=np.int32))
+            dz_dataset.append(np.empty(0, dtype=np.float64))
 
     # Optimized SHI calculation
     min_range_m = min_range * 1000

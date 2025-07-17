@@ -1,0 +1,11 @@
+name: pyhail-test-env
+channels:
+ - conda-forge
+dependencies:
+ - numpy
+ - scipy
+ - arm_pyart
+ - matplotlib
+ - numba=0.59.1
+ - ipython
+ - ipykernel

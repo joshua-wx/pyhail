@@ -19,7 +19,7 @@ def pyodim(
     column_shift_maximum=2500
     ):
     """
-    Pyodim Wrapper for PPI MESH
+    Pyodim Wrapper for finding the column maximum
 
     Parameters:
     ===========
@@ -32,9 +32,9 @@ def pyodim(
     range_fname: string
         name of radar bin range field
     min_range: int
-        minimum surface range for MESH retrieval (m)
+        minimum surface range for retrieval (m)
     max_range: int
-        maximum surface range for MESH retrieval (m)
+        maximum surface range for retrieval (m)
     column_altitude_maximum: float
         maximum altitude (m above radar radar) to use for column search
     column_shift_maximum: float
@@ -172,7 +172,6 @@ def main(
     column_shift_maximum=2500
 ):
     """
-    Adapted from Witt et al. 1998 and Murillo and Homeyer 2019
 
     Parameters
     ----------
@@ -185,16 +184,17 @@ def main(
     rangebin: list of 1D ndarrays
         list where each element is the sweep range distances
     min_range: int
-        minimum surface range for MESH retrieval (m)
+        minimum surface range for retrieval (m)
     max_range: int
-        maximum surface range for MESH retrieval (m)
+        maximum surface range for retrieval (m)
     column_altitude_maximum: float
         maximum altitude (m above radar radar) to use for column search
     column_shift_maximum: float
         maximum shift from column center to use a pixel
     Returns
     -------
-    output_field : dictionary
+    output_field : np.array
+        2D array that is the column maximum
 
     """
 
@@ -224,8 +224,8 @@ def main(
         []
     )  # list (dim: range) where each element represents an the range bin index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
     for rg_idx in range(sweep0_nbins):
-        s_lookup = [0]
-        for sweep_idx in range(1, n_ppi, 1):
+        s_lookup = []
+        for sweep_idx in range(0, n_ppi, 1):
             dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
             #topped out above column max, break loop

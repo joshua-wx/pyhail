@@ -550,9 +550,9 @@ def main(
         []
     )  # list (dim: range) where each element represents an the range bin index to use from each sweep above sweep0. ASSUMES ORDERS SWEEP ELEVATION
     for rg_idx in range(sweep0_nbins):
-        s_lookup = [0]
-        column_z = [z_dataset[0][rg_idx]]
-        for sweep_idx in range(1, n_ppi, 1):
+        s_lookup = []
+        column_z = []
+        for sweep_idx in range(0, n_ppi, 1):
             dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
             # skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths and when base scan max range is greater than all other scans)

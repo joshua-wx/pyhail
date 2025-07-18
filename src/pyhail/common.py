@@ -65,11 +65,12 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
             # read dataset
             ds_name = "dataset" + str(i + 1)
             # skip until required elevation angle is found
-            if f[ds_name]["where"].attrs["elangle"] != elevation:
+            test_angle = f[ds_name]["where"].attrs["elangle"].astype(np.float32)
+            if test_angle != elevation:
                 continue
             # skip if birdbath
-            if f[ds_name]["where"].attrs["elangle"] == 90 and skip_birdbath:
-                return hca_meta
+            if test_angle == float(90) and skip_birdbath:
+                continue
             # read pid data into output dictionary
             hca_data = np.array(f[ds_name]["quality1"]["data"]).astype(float)
             hca_data[hca_data == -1] = np.nan

@@ -3,8 +3,6 @@ Optimised approach to find the vertical column maximum in spherical coordinates
 """
 
 import numpy as np
-
-import numba
 from numba import jit
 
 def pyodim(
@@ -15,6 +13,7 @@ def pyodim(
     range_fname="range",
     min_range=10,
     max_range=150,
+    column_altitude_minimum=0,
     column_altitude_maximum=2500,
     column_shift_maximum=2500
     ):
@@ -35,6 +34,8 @@ def pyodim(
         minimum surface range for retrieval (m)
     max_range: int
         maximum surface range for retrieval (m)
+    column_altitude_minimum: float
+        minimum altitude (m above radar radar) to use for column search
     column_altitude_maximum: float
         maximum altitude (m above radar radar) to use for column search
     column_shift_maximum: float
@@ -66,6 +67,7 @@ def pyodim(
         range_dataset,
         min_range=min_range,
         max_range=max_range,
+        column_altitude_minimum=column_altitude_minimum,
         column_altitude_maximum=column_altitude_maximum,
         column_shift_maximum=column_shift_maximum,
     )
@@ -126,8 +128,7 @@ def find_column_max(field_dataset, s_lookup_dataset,
     n_bins = len(s_dataset[0])
     
     # Pre-allocate output arrays
-    column_max_field = np.zeros((n_rays, n_bins))
-    column_max_mask = np.zeros((n_rays, n_bins), dtype=numba.boolean)
+    column_max_field = np.full((n_rays, n_bins), np.nan)
     # Pre-compute range mask (vectorized)
     s0 = s_dataset[0]
     range_mask = (s0 < min_range_m) | (s0 > max_range_m)
@@ -136,30 +137,29 @@ def find_column_max(field_dataset, s_lookup_dataset,
     valid_columns = []
     for rg_idx in range(n_bins):
         if (not range_mask[rg_idx]
-            and s_lookup_dataset[rg_idx].size > 0):
+            and np.sum(s_lookup_dataset[rg_idx] != -1) > 0):
             valid_columns.append(rg_idx)
     
     # Process only valid columns - reduces iterations significantly
     for az_idx in range(n_rays):
-        # Apply range mask for entire row at once
-        column_max_mask[az_idx, range_mask] = True
         
         # Process only valid columns
         for rg_idx in valid_columns:
-            column_field = np.zeros(len(s_lookup_dataset[rg_idx]))
+            column_field = np.full(len(s_lookup_dataset[rg_idx]), np.nan)
             lookup_indices = s_lookup_dataset[rg_idx]
             
             # Vectorized column integration where possible
-            for lookup_idx in range(len(lookup_indices)):
-                sweep_idx = lookup_idx
+            for sweep_idx in range(len(lookup_indices)):
                 if sweep_idx < len(field_dataset):
-                    rng_idx = lookup_indices[lookup_idx]
+                    rng_idx = lookup_indices[sweep_idx]
+                    if rng_idx == -1:
+                        continue
                     if rng_idx < field_dataset[sweep_idx].shape[1]:
-                        column_field[lookup_idx] = field_dataset[sweep_idx][az_idx, rng_idx]
+                        column_field[sweep_idx] = field_dataset[sweep_idx][az_idx, rng_idx]
             
             column_max_field[az_idx, rg_idx] = np.nanmax(column_field)
     
-    return column_max_field, column_max_mask
+    return column_max_field
 
 def main(
     field,
@@ -168,6 +168,7 @@ def main(
     rangebin,
     min_range=10,
     max_range=150,
+    column_altitude_minimum=0,
     column_altitude_maximum=2500,
     column_shift_maximum=2500
 ):
@@ -187,6 +188,8 @@ def main(
         minimum surface range for retrieval (m)
     max_range: int
         maximum surface range for retrieval (m)
+    column_altitude_minimum: float
+        minimum altitude (m above radar radar) to use for column search
     column_altitude_maximum: float
         maximum altitude (m above radar radar) to use for column search
     column_shift_maximum: float
@@ -228,30 +231,27 @@ def main(
         for sweep_idx in range(0, n_ppi, 1):
             dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
-            #topped out above column max, break loop
-            if z_dataset[sweep_idx][closest_rng_idx] > column_altitude_maximum:
-                continue
-            # skip sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths and when base scan max range is greater than all other scans)
+            #topped out above column min, set to invalid (-1)
+            if z_dataset[sweep_idx][closest_rng_idx] < column_altitude_minimum:
+                closest_rng_idx = -1
+            #topped out above column max, set to invalid (-1)
+            elif z_dataset[sweep_idx][closest_rng_idx] > column_altitude_maximum:
+                closest_rng_idx = -1
+            # sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths and when base scan max range is greater than all other scans), set to invalid (-1)
             elif dist_array[closest_rng_idx] > column_shift_maximum:
-                continue
-            else:
-                s_lookup.append(closest_rng_idx)
+                closest_rng_idx = -1
+            s_lookup.append(closest_rng_idx)
             # else:
             #     print('skipping', 'distance check', dist_array[closest_rng_idx], 'range idx', rg_idx, 'sweep idx', sweep_idx)
-        # check if at least one valid values in the column exists
-        if len(s_lookup) >= 1:
-            s_lookup_dataset.append(np.array(s_lookup))
-        else:
-            s_lookup_dataset.append(np.empty(0, dtype=np.int64))
+        s_lookup_dataset.append(np.array(s_lookup))
+
 
     # Optimized calculation
     min_range_m = min_range * 1000
     max_range_m = max_range * 1000
-    column_max, column_max_mask = find_column_max(
+    column_max = find_column_max(
         field_dataset, s_lookup_dataset,
         min_range_m, max_range_m,
         azimuth_dataset, s_dataset)
-    column_max[column_max_mask] = np.nan
-
     # return output_fields dictionary
     return column_max

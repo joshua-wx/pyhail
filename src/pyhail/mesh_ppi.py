@@ -6,6 +6,7 @@ Joshua Soderholm - 15 August 2020
 """
 
 import copy
+import warnings
 import numpy as np
 from pyhail import common
 
@@ -488,13 +489,13 @@ def main(
     # require more than one sweep
     if len(elevation_dataset) <= minimum_sweeps_raise_expection:
         raise RuntimeError(
-            f"Require more than {minimum_sweeps_raise_expection} sweeps to calculate MESH"
+            f"Require more than {minimum_sweeps_raise_expection} sweeps to calculate MESH, terminating process"
         )
     elif len(elevation_dataset) < minimum_sweeps_raise_warning:
-        raise Warning(
+        warnings.warn(
             (
                 f"Number of sweep is less than {minimum_sweeps_raise_warning} "
-                "and not recommended for MESH calculations"
+                "and not recommended for MESH calculations, proceed with caution"
             )
         )
     # sweep must be sorted from lowest to highest elevation
@@ -576,6 +577,12 @@ def main(
         hail_ke_dataset, wt_dataset, dz_dataset, s_lookup_dataset,
         azimuth_dataset, s_dataset, min_range_m, max_range_m
     )
+    
+    # ensure SHI is valid
+    shi(np.isnan(shi)) = 0.0  # set NaNs to zero for bounding
+    shi(np.isfinite(shi)) = 0.0  # set inf values to zero for bounding
+    shi(shi < 0) = 0.0  # set negative values to zero for bounding
+
 
     # calc maximum estimated severe hail (mm)
     if (

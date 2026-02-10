@@ -577,11 +577,11 @@ def main(
         hail_ke_dataset, wt_dataset, dz_dataset, s_lookup_dataset,
         azimuth_dataset, s_dataset, min_range_m, max_range_m
     )
-    
+
     # ensure SHI is valid
-    shi(np.isnan(shi)) = 0.0  # set NaNs to zero for bounding
-    shi(np.isfinite(shi)) = 0.0  # set inf values to zero for bounding
-    shi(shi < 0) = 0.0  # set negative values to zero for bounding
+    shi[np.isnan(shi)] = 0.0  # set NaNs to zero for bounding
+    shi[np.isfinite(shi)] = 0.0  # set inf values to zero for bounding
+    shi[shi < 0] = 0.0  # set negative values to zero for bounding
 
 
     # calc maximum estimated severe hail (mm)

@@ -580,7 +580,7 @@ def main(
 
     # ensure SHI is valid
     shi[np.isnan(shi)] = 0.0  # set NaNs to zero for bounding
-    shi[np.isfinite(shi)] = 0.0  # set inf values to zero for bounding
+    shi[np.isinf(shi)] = 0.0  # set inf values to zero for bounding
     shi[shi < 0] = 0.0  # set negative values to zero for bounding
 
 

@@ -43,4 +43,8 @@ To install in your home directory, use:
 ### Use
 - [Example Notebook](https://github.com/joshua-wx/pyhail/blob/master/notebooks/example.ipynb)
 
-This project is maintained by Joshua Soderholm. Any problems? Please use the Github issue tracker.
+### Test files
+The test file for the pyart and pyodim test notebooks is located at notebooks/data
+For the c_band_mesh_correction script, the test files are located on gadi. Please contact if you need access.
+
+This project is maintained by Joshua Soderholm (aura at bom.gov.au). Any problems? Please use the Github issue tracker.

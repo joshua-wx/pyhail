@@ -1,8 +1,8 @@
 """
-Hail Differential Refletivity (HDR) implementation
+Hail Differential Reflectivity (HDR) implementation
 
-This algorthim was developed by:
-Aydin and Zhao 1990, A computational study of polarmetric radar observables in
+This algorithm was developed by:
+Aydin and Zhao 1990, A computational study of polarimetric radar observables in
 hail. IEEE Trans. Geosci. Remote Sens. 28, 412-422
 
 Requires reflectivity and differential reflectivity data
@@ -51,7 +51,7 @@ def pyart(
     """
     # init radar fields
     empty_radar_field = {
-        "data": np.zeros((radar.nrays, radar.ngates)),
+        "data": np.full((radar.nrays, radar.ngates), np.nan),
         "units": "",
         "long_name": "",
         "description": "",
@@ -74,8 +74,9 @@ def pyart(
         ]
 
     # add metadata
-    radar = common.add_pyart_metadata(radar, hdr_fname, hdr_meta)
-    radar = common.add_pyart_metadata(radar, hdr_size_fname, hdr_size_meta)
+    if radar.nsweeps > 0:
+        radar = common.add_pyart_metadata(radar, hdr_fname, hdr_meta)
+        radar = common.add_pyart_metadata(radar, hdr_size_fname, hdr_size_meta)
 
     return radar
 
@@ -116,7 +117,7 @@ def pyodim(
             datasets[sweep_idx][differential_reflectivity_fname].values,
         )
         # add new fields
-        datasets[sweep_idx] = datasets[sweep_idx].merge(
+        datasets[sweep_idx] = datasets[sweep_idx].assign(
             {
                 hdr_fname: (("azimuth", "range"), hdr_meta["data"]),
                 hdr_size_fname: (("azimuth", "range"), hdr_size_meta["data"]),
@@ -130,21 +131,21 @@ def pyodim(
 
 def main(reflectivity_sweep, differential_reflectivity_sweep):
     """
-    Hail Differential Reflectity Retrieval
+    Hail Differential Reflectivity Retrieval
     Required DBZH and ZDR fields
 
     Parameters:
     ===========
     reflectivity_sweep: 2d ndarray
         reflectivity data in an array with dimensions (azimuth, range)
-    reflectivity_sweep: 2d ndarray
+    differential_reflectivity_sweep: 2d ndarray
         differential reflectivity data in an array with dimensions (azimuth, range)
     Returns:
     ========
     hdr_meta: dict
         pyart field dictionary containing HDR dataset
     hdr_size_meta: dict
-        pyary field dictionary containing HDR size dataset
+        pyart field dictionary containing HDR size dataset
 
     """
 
@@ -157,7 +158,7 @@ def main(reflectivity_sweep, differential_reflectivity_sweep):
     # apply to zhh
     hdr_data = reflectivity_sweep - zdr_fun
 
-    # use polynomial from Depue et al. 2009 to transform dB into mm
+    # use polynomial from Depue et al. 2007 to transform dB into mm
     hdr_size = 0.0284 * (hdr_data**2) - 0.366 * hdr_data + 11.69
     hdr_size[hdr_data <= 0] = 0
 

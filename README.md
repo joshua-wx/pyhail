@@ -1,4 +1,5 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/joshua-wx/pyhail)
+[![tests](https://github.com/joshua-wx/pyhail/actions/workflows/tests.yml/badge.svg)](https://github.com/joshua-wx/pyhail/actions/workflows/tests.yml)
 
 # Python Hail Retrieval Toolkit (pyhail)
 
@@ -115,6 +116,49 @@ pip install -e .
 | `mesh_idx` | — | Sweep index containing the MESH field |
 | `fz_level` | — | Freezing level height (m) |
 | `pressure` | — | Mean surface-to-freezing-level pressure (hPa) |
+
+---
+
+## Testing
+
+The unit tests cover the pure mathematical functions: MESH calibration formulas, HSDA membership
+functions, the trapezoidal MF and aggregate scorer, and `safe_log`.
+
+### Requirements
+
+pytest must be installed in the active environment:
+
+```bash
+pip install pytest
+```
+
+If you are using the conda environment from `test_environment.yml`, activate it first:
+
+```bash
+conda activate pyhail-test-env
+pip install pytest
+```
+
+### Running the tests
+
+From the repository root:
+
+```bash
+python -m pytest tests/ -v
+```
+
+To run a single test file:
+
+```bash
+python -m pytest tests/test_mesh_formulas.py -v
+```
+
+| Test file | What it covers |
+|-----------|----------------|
+| [`tests/test_mesh_formulas.py`](tests/test_mesh_formulas.py) | `mesh_witt1998`, `mesh_mh2019_75`, `mesh_mh2019_95`, `mesh_smooth_blend` |
+| [`tests/test_hsda_mf.py`](tests/test_hsda_mf.py) | HSDA scalar membership functions (`c`, `f1`–`f3`, `g1`–`g3`) and `build_mf` for all altitude levels |
+| [`tests/test_hsda_core.py`](tests/test_hsda_core.py) | `trapmf`, `calc_ag` (weighting and rule 1), `h_sz` (rules 2 and 3) |
+| [`tests/test_common.py`](tests/test_common.py) | `safe_log` — scalar, array, custom eps, boundary values |
 
 ---
 

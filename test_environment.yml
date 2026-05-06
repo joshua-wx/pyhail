@@ -6,7 +6,12 @@ dependencies:
  - scipy
  - arm_pyart
  - matplotlib
- - numba=0.59.1
+ - cartopy
+ - numba>=0.59.1
  - ipython
  - ipykernel
  - ipywidgets
+ - pip
+ - pip:
+   - pyodim
+   - -e .

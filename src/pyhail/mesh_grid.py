@@ -11,6 +11,8 @@ import warnings
 import numpy as np
 from scipy import ndimage as ndi
 from pyhail import common
+from pyhail.mesh_formulas import mesh_witt1998, mesh_mh2019_75, mesh_mh2019_95, mesh_smooth_blend
+
 
 
 def remove_small_objects(ar, min_size=64, connectivity=1, *, out=None):
@@ -188,13 +190,14 @@ def main(
     dbz_fname,
     levels,
     radar_band="C",
-    mesh_method="mh2019_75",
+    mesh_method="blend",
     mesh_fname=None,
     posh_fname=None,
     ke_fname=None,
     shi_fname=None,
     speckle_filter=True,
     correct_cband_refl=True,
+    transition_width=200
 ):
     """
     Adapted from Witt et al. 1998 and Murillo and Homeyer 2019
@@ -214,11 +217,15 @@ def main(
         String to name new hail field that will be added to the grid object.
         Default is 'mesh', 'posh', 'hail_ke', 'shi'.
     mesh_method : string
-        either witt1998, mh2019_75 or mh2019_95. see more information below
+        either witt1998, mh2019_75, mh2019_95 or blend. see more information below
     speckle_filter: logical
         flag for running the speckle filter
     correct_cband_refl: logical
         flag to trigger C band hail reflectivity correction (if radar_band is C)
+    transition_width : float
+        SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
+        0.1 to 0.9.  Smaller values approach a hard piecewise switch;
+        larger values produce a broader, gentler handoff.  Default 200.
     Returns
     -------
     output_fields : dictionary
@@ -297,29 +304,29 @@ def main(
     shi = 0.1 * np.sum(w_t * hke, axis=0) * d_z
 
     # calc maximum estimated severe hail (mm)
-    if (
-        mesh_method == "witt1998"
-    ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
-        mesh = 2.54 * shi**0.5
+    if mesh_method == "witt1998":
+        mesh = mesh_witt1998(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
         mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first level of the 3D grid."
 
-    elif (
-        mesh_method == "mh2019_75"
-    ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 15.096 * shi**0.206
+    elif mesh_method == "mh2019_75":
+        mesh = mesh_mh2019_75(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid."
 
-    elif (
-        mesh_method == "mh2019_95"
-    ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 22.157 * shi**0.212
+    elif mesh_method == "mh2019_95":
+        mesh = mesh_mh2019_95(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid."
+    elif (
+        mesh_method == "blend"
+    ):  # blended Witt 1998 and 75th percentile fit from Muillo and Homeyer 2019
+        mesh = mesh_smooth_blend(shi, transition_width=transition_width)
+        mesh_description = "MESH (mm) blending Witt (1998) and Murillo & Homeyer (2021) calibrations via a smooth logistic weight."
+        mesh_comment = "Witt 1998 Murillo and Homeyer 2019 blended fit; only valid in the first level of the 3D grid."
     else:
         raise ValueError(
-            "unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95"
+            "unknown MESH method, please use witt1998, mh2019_75, mh2019_95 or blend"
         )
 
     # calc warning threshold (J/m/s) NOTE: freezing height must be in km

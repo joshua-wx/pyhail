@@ -9,6 +9,7 @@ import copy
 import warnings
 import numpy as np
 from pyhail import common
+from pyhail.mesh_formulas import mesh_witt1998, mesh_mh2019_75, mesh_mh2019_95, mesh_smooth_blend
 
 import numba
 from numba import jit
@@ -24,11 +25,12 @@ def pyart(
     radar_band="S",
     min_range=10,
     max_range=150,
-    mesh_method="mh2019_75",
+    mesh_method="blend",
     correct_cband_refl=True,
     minimum_sweeps_raise_expection=4,
     minimum_sweeps_raise_warning=8,
     column_shift_maximum=2500,
+    transition_width=200
 ):
     """
     PyART Wrapper for PPI MESH
@@ -56,7 +58,7 @@ def pyart(
     max_range: int
         maximum surface range for MESH retrieval (m)
     mesh_method : string
-        either witt1998, mh2019_75 or mh2019_95. see more information below
+        either witt1998, mh2019_75, mh2019_95 or blend. see more information below
     correct_cband_refl: logical
         flag to trigger C band hail reflectivity correction (if radar_band is C)
     minimum_sweeps_raise_expection: int
@@ -65,6 +67,10 @@ def pyart(
         minimum number of sweeps to raise a warning
     column_shift_maximum: float
         maximum horizontal distance a column can shift by
+    transition_width : float
+        SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
+        0.1 to 0.9.  Smaller values approach a hard piecewise switch;
+        larger values produce a broader, gentler handoff.  Default 200.
     Returns:
     ========
     radar: class
@@ -114,6 +120,7 @@ def pyart(
         minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
         minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
         column_shift_maximum=column_shift_maximum,
+        transition_width=transition_width
     )
 
     # index of lowest sweep
@@ -152,11 +159,12 @@ def pyodim(
     radar_band="S",
     min_range=10,
     max_range=150,
-    mesh_method="mh2019_75",
+    mesh_method="blend",
     correct_cband_refl=True,
     minimum_sweeps_raise_expection=4,
     minimum_sweeps_raise_warning=8,
     column_shift_maximum=2500,
+    transition_width=200
 ):
     """
     Pyodim Wrapper for PPI MESH
@@ -190,7 +198,7 @@ def pyodim(
     max_range: int
         maximum surface range for MESH retrieval (m)
     mesh_method : string
-        either witt1998, mh2019_75 or mh2019_95. see more information below
+        either witt1998, mh2019_75, mh2019_95 or blend. see more information below
     correct_cband_refl: logical
         flag to trigger C band hail reflectivity correction (if radar_band is C)
     minimum_sweeps_raise_expection: int
@@ -199,11 +207,14 @@ def pyodim(
         minimum number of sweeps to raise a warning
     column_shift_maximum: float
         maximum horizontal distance a column can shift by
+    transition_width : float
+        SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
+        0.1 to 0.9.  Smaller values approach a hard piecewise switch;
+        larger values produce a broader, gentler handoff.  Default 200.
     Returns:
     ========
     datasets: list of dicts
         pyodim dataset updated with mesh, ke, shi, posh fields
-
     """
 
     # build datasets
@@ -234,6 +245,7 @@ def pyodim(
         minimum_sweeps_raise_expection=minimum_sweeps_raise_expection,
         minimum_sweeps_raise_warning=minimum_sweeps_raise_warning,
         column_shift_maximum=column_shift_maximum,
+        transition_width=transition_width
     )
 
     # add 2D fields and metadata
@@ -303,7 +315,7 @@ def _antenna_to_arc(ranges, elevation):
     theta_e = elevation * np.pi / 180.0
     R = 6371.0 * 1000.0 * 4.0 / 3.0
     
-    # Vectorized operations compiled to efficient machine code
+    # Vectorized operations compiled to efficient machine codeoptional
     z = np.sqrt(ranges**2 + R**2 + 2.0 * ranges * R * np.sin(theta_e)) - R
     s = R * np.arcsin(ranges * np.cos(theta_e) / (R + z))
     return s, z
@@ -418,11 +430,12 @@ def main(
     radar_band="S",
     min_range=10,
     max_range=150,
-    mesh_method="mh2019_75",
+    mesh_method="blend",
     correct_cband_refl=True,
     minimum_sweeps_raise_expection=4,
     minimum_sweeps_raise_warning=8,
     column_shift_maximum=2500,
+    transition_width=200
 ):
     """
     Adapted from Witt et al. 1998 and Murillo and Homeyer 2019
@@ -448,7 +461,7 @@ def main(
     max_range: int
         maximum surface range for MESH retrieval (m)
     mesh_method : string
-        either witt1998, mh2019_75 or mh2019_95. see more information below
+        either witt1998, mh2019_75, mh2019_95 or blend. see more information below
     correct_cband_refl: logical
         flag to trigger C band hail reflectivity correction (if radar_band is C)
     minimum_sweeps_raise_expection: int
@@ -457,6 +470,11 @@ def main(
         minimum number of sweeps to raise a warning
     column_shift_maximum: float
         maximum horizontal distance a column can shift by
+    transition_width : float
+        SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
+        0.1 to 0.9.  Smaller values approach a hard piecewise switch;
+        larger values produce a broader, gentler handoff.  Default 200.
+        
     Returns
     -------
     output_fields : dictionary
@@ -585,34 +603,31 @@ def main(
 
 
     # calc maximum estimated severe hail (mm)
-    if (
-        mesh_method == "witt1998"
-    ):  # 75th percentil fit from witt et al. 1998 (fitted to 147 reports)
-        mesh = 2.54 * shi**0.5
+    if mesh_method == "witt1998":
+        mesh = mesh_witt1998(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
-        mesh_comment = (
-            "75th percentile fit using 147 hail reports; only valid in the first sweep"
-        )
+        mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first sweep"
 
-    elif (
-        mesh_method == "mh2019_75"
-    ):  # 75th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 15.096 * shi**0.206
+    elif mesh_method == "mh2019_75":
+        mesh = mesh_mh2019_75(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
-        mesh_comment = (
-            "75th percentile fit using 5897 hail reports; only valid in the first sweep"
-        )
-    elif (
-        mesh_method == "mh2019_95"
-    ):  # 95th percentile fit from Muillo and Homeyer 2019 (fitted to 5897 reports)
-        mesh = 22.157 * shi**0.212
+        mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first sweep"
+
+    elif mesh_method == "mh2019_95":
+        mesh = mesh_mh2019_95(shi)
         mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
+        mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first sweep"
+    elif (
+        mesh_method == "blend"
+    ):  # blended Witt 1998 and 75th percentile fit from Muillo and Homeyer 2019
+        mesh = mesh_smooth_blend(shi, transition_width=transition_width)
+        mesh_description = "MESH (mm) blending Witt (1998) and Murillo & Homeyer (2021) calibrations via a smooth logistic weight."
         mesh_comment = (
-            "95th percentile fit using 5897 hail reports; only valid in the first sweep"
+            "Witt 1998 Muillo and Homeyer 2019 blended fit; only valid in the first sweep"
         )
     else:
         raise ValueError(
-            "unknown MESH method selects, please use witt1998, mh2019_75 or mh2019_95"
+            "unknown MESH method, please use witt1998, mh2019_75, mh2019_95 or blend"
         )
 
     # calc warning threshold (J/m/s) NOTE: freezing height must be in km

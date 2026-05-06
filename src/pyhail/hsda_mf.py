@@ -1,5 +1,5 @@
 """
-Hail Size Discrimination Algrothim membership functions sub-module of pyhail
+Hail Size Discrimination Algorithm membership functions sub-module of pyhail
 
 Joshua Soderholm - 15 June 2018
 """

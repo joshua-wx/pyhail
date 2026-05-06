@@ -1,6 +1,6 @@
 """
-HSDA implementation (Hail Size Discrimination Algorthim)
-This algorthim was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1 
+HSDA implementation (Hail Size Discrimination Algorithm)
+This algorithm was developed by Ortega et al. 2016 doi:10.1175/JAMC-D-15-0203.1
 and Ryzhkov et al. 2013 doi:10.1175/JAMC-D-13-074.1
 
 Joshua Soderholm - 15 June 2018
@@ -54,12 +54,12 @@ def pyart(
     Returns:
     ========
     radar: pyart radar class
-        updated with hsda fieldIAG
+        updated with hsda field
 
     """
     # init radar fields
     empty_radar_field = {
-        "data": np.zeros((radar.nrays, radar.ngates)),
+        "data": np.full((radar.nrays, radar.ngates), np.nan),
         "units": "",
         "long_name": "",
         "description": "",
@@ -90,7 +90,8 @@ def pyart(
         radar.fields[hsda_fname]["data"][radar.get_slice(sweep)] = hsda_meta["data"]
 
     # add metadata
-    radar.fields[hsda_fname]["data"][radar.get_slice(sweep)] = hsda_meta["data"]
+    if radar.nsweeps > 0:
+        radar = common.add_pyart_metadata(radar, hsda_fname, hsda_meta)
 
     return radar
 
@@ -116,8 +117,6 @@ def pyodim(
     ===========
     datasets: list of dicts
         pyodim dataset
-    filename: string
-        full path to source
     reflectivity_fname: string
         name of reflectivity field
     differential_reflectivity_fname: string
@@ -158,7 +157,7 @@ def pyodim(
         )
 
         # add new fields
-        datasets[sweep_idx] = datasets[sweep_idx].merge(
+        datasets[sweep_idx] = datasets[sweep_idx].assign(
             {hsda_fname: (("azimuth", "range"), hsda_meta["data"])}
         )
         # metadata
@@ -258,17 +257,16 @@ def main(
 
     # check for any valid data
     hail_mask = np.isin(classification_sweep, hca_hail_idx)
-    hsda_data = np.zeros(classification_sweep.shape)
-    hsda_data[:] = np.nan  # set all to nan, which is masked
+    hsda_data = np.full(classification_sweep.shape, np.nan)
     # skip processing if there's no valid hail pixels
     if not np.any(hail_mask):
         return {
             "data": hsda_data,
             "units": "NA",
             "long_name": "Hail Size Discrimination Algorithm",
-            "description:": ("Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013)"
-                             " doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016)"
-                             " doi:10.1175/JAMC-D-15-0203.1"),
+            "description": ("Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013)"
+                            " doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016)"
+                            " doi:10.1175/JAMC-D-15-0203.1"),
             "comments": classes,
         }
 
@@ -355,6 +353,9 @@ def main(
         "data": hsda_data,
         "units": "NA",
         "long_name": "Hail Size Discrimination Algorithm",
+        "description": ("Hail Size Discrimination Algorithm developed by Ryzhkov et al. (2013)"
+                        " doi:10.1175/JAMC-D-13-074.1 and Ortega et al. (2016)"
+                        " doi:10.1175/JAMC-D-15-0203.1"),
         "comments": classes,
     }
     # return radar object
@@ -404,7 +405,7 @@ def h_sz(zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w):
     ag_vec = np.array([h1_ag, h2_ag, h3_ag])
     max_ag = np.nanmax(ag_vec)
     out = np.where(ag_vec == max_ag)
-    if len(out) == 0:
+    if len(out[0]) == 0:
         out = 0  # entirely nan/invalid data, so no hail assignment
     else:
         out = out[0][-1] + 1  # last item, using 1,2,3 indexing
@@ -421,14 +422,10 @@ def h_sz(zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w):
 @jit(nopython=True)
 def calc_ag(mf, zh, zdr, rhv, q, w):
     """
-    calculates the polarmetic aggregates for a hail size class
+    calculates the polarimetric aggregates for a hail size class
 
     Parameters:
     ===========
-    h_field: string
-        hail size field name (h1,h2 or h3)
-    alt_field: string
-        alt field name (alt1,...alt6)
     zh: float
         zh value for voxel (dbz)
     zdr: float
@@ -485,7 +482,7 @@ def trapmf(x, a, b, c, d):
     """
     Trapezoidal membership function generator.
     Parameters
-    ========
+    ----------
     x : single element array like
     abcd : 1d array, length 4
         Four-element vector.  Ensure a <= b <= c <= d.

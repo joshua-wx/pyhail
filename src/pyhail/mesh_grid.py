@@ -1,6 +1,6 @@
 """
 MESH implementation for calculating on gridded data.
-This algorthim was originally developed by 
+This algorithm was originally developed by
 Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 
 and modified by Murillo and Homeyer 2019 doi:10.1175/JAMC-D-18-0247.1
 
@@ -18,7 +18,7 @@ from pyhail.mesh_formulas import mesh_witt1998, mesh_mh2019_75, mesh_mh2019_95, 
 def remove_small_objects(ar, min_size=64, connectivity=1, *, out=None):
     """Remove objects smaller than the specified size.
 
-    Copyied from https://github.com/scikit-image/scikit-image/blob/v0.24.0/skimage/morphology/misc.py#L64-L160
+    Copied from https://github.com/scikit-image/scikit-image/blob/v0.24.0/skimage/morphology/misc.py#L64-L160
 
     Expects ar to be an array with labeled objects, and removes objects
     smaller than min_size. If `ar` is bool, the image is first labeled.
@@ -118,7 +118,7 @@ def remove_small_objects(ar, min_size=64, connectivity=1, *, out=None):
 def filter_small_objects(field, threshold=0, size=9):
     """run a filter to remove small objects
 
-     Parameters:
+    Parameters:
     ===========
     field: ndarray (n,m)
         2D array to filter
@@ -128,7 +128,7 @@ def filter_small_objects(field, threshold=0, size=9):
         area size (number of pixels) threshold to remove small objects
     Returns:
     ========
-    field: narray (n,m)
+    field: ndarray (n,m)
 
     """
     # apply intensity threshold to produce a mask
@@ -218,14 +218,15 @@ def main(
         Default is 'mesh', 'posh', 'hail_ke', 'shi'.
     mesh_method : string
         either witt1998, mh2019_75, mh2019_95 or blend. see more information below
-    speckle_filter: logical
+    speckle_filter: bool
         flag for running the speckle filter
-    correct_cband_refl: logical
+    correct_cband_refl: bool
         flag to trigger C band hail reflectivity correction (if radar_band is C)
     transition_width : float
         SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
         0.1 to 0.9.  Smaller values approach a hard piecewise switch;
         larger values produce a broader, gentler handoff.  Default 200.
+
     Returns
     -------
     output_fields : dictionary
@@ -264,7 +265,7 @@ def main(
     grid.add_field("latitude", latitude, replace_existing=True)
 
     # extract grids
-    dbz_grid = grid.fields[dbz_fname]["data"]
+    dbz_grid = grid.fields[dbz_fname]["data"].copy()
     grid_sz = np.shape(dbz_grid)
     alt_vec = (
         grid.z["data"] + grid.radar_altitude["data"][0]
@@ -282,14 +283,12 @@ def main(
     dbz_weights = (dbz_grid - z_l) / (z_u - z_l)
     dbz_weights[dbz_grid <= z_l] = 0
     dbz_weights[dbz_grid >= z_u] = 1
-    dbz_weights[dbz_weights < 0] = 0
-    dbz_weights[dbz_weights > 1] = 1
 
     # limit on dbz_grid
     dbz_grid[dbz_grid > 100] = 100
     dbz_grid[dbz_grid < -100] = -100
 
-    # calc hail kenetic energy
+    # calc hail kinetic energy
     hke = (5 * 10**-6) * 10 ** (0.084 * dbz_grid) * dbz_weights
 
     # calc temperature based weighting function
@@ -306,21 +305,21 @@ def main(
     # calc maximum estimated severe hail (mm)
     if mesh_method == "witt1998":
         mesh = mesh_witt1998(shi)
-        mesh_description = "Maximum Estimated Size of Hail retreival developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
+        mesh_description = "Maximum Estimated Size of Hail retrieval developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 "
         mesh_comment = "75th percentile fit using 147 hail reports; only valid in the first level of the 3D grid."
 
     elif mesh_method == "mh2019_75":
         mesh = mesh_mh2019_75(shi)
-        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
+        mesh_description = "Maximum Estimated Size of Hail retrieval originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "75th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid."
 
     elif mesh_method == "mh2019_95":
         mesh = mesh_mh2019_95(shi)
-        mesh_description = "Maximum Estimated Size of Hail retreival originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
+        mesh_description = "Maximum Estimated Size of Hail retrieval originally developed by Witt et al. 1998 doi:10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2 and recalibrated by Murillo and Homeyer (2021) doi:10.1175/JAMC-D-20-0271.1 "
         mesh_comment = "95th percentile fit using 5897 hail reports; only valid in the first level of the 3D grid."
     elif (
         mesh_method == "blend"
-    ):  # blended Witt 1998 and 75th percentile fit from Muillo and Homeyer 2019
+    ):  # blended Witt 1998 and 75th percentile fit from Murillo and Homeyer 2019
         mesh = mesh_smooth_blend(shi, transition_width=transition_width)
         mesh_description = "MESH (mm) blending Witt (1998) and Murillo & Homeyer (2021) calibrations via a smooth logistic weight."
         mesh_comment = "Witt 1998 Murillo and Homeyer 2019 blended fit; only valid in the first level of the 3D grid."
@@ -334,7 +333,6 @@ def main(
 
     # calc probability of severe hail (POSH) (%)
     posh = 29 * common.safe_log(shi / warning_threshold) + 50
-    posh = np.real(posh)
     posh[posh < 0] = 0
     posh[posh > 100] = 100
 
@@ -354,7 +352,7 @@ def main(
     }
     output_fields[ke_fname] = ke_dict
 
-    shi_grid = np.zeros_like(hke)
+    shi_grid = np.full_like(hke, np.nan)
     shi_grid[0, :, :] = shi
     shi_dict = {
         "data": shi_grid,
@@ -366,7 +364,7 @@ def main(
     }
     output_fields[shi_fname] = shi_dict
 
-    mesh_grid = np.zeros_like(hke)
+    mesh_grid = np.full_like(hke, np.nan)
     mesh_grid[0, :, :] = mesh
     mesh_dict = {
         "data": mesh_grid,
@@ -377,7 +375,7 @@ def main(
     }
     output_fields[mesh_fname] = mesh_dict
 
-    posh_grid = np.zeros_like(hke)
+    posh_grid = np.full_like(hke, np.nan)
     posh_grid[0, :, :] = posh
     posh_dict = {
         "data": posh_grid,

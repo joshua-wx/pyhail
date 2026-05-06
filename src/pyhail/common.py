@@ -24,8 +24,6 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
         tuple of the data arrange shape with 2 values
     skip_birdbath: boolean
         flag to skip birdbath scans (90 deg elevation)
-    fillvalue: int
-        Fillvalue used for data array
 
     Returns
     -------
@@ -41,13 +39,12 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
         + "14: Supercooled_Liquid_Droplets; 15: Flying_Insects; 16: Second_Trip; "
         + "17: Ground_Clutter; 18: misc1; 19: misc2"
     )
-    hca = np.zeros(array_shape)
-    hca[:] = np.nan
+    hca = np.full(array_shape, np.nan)
     hca_meta = {
         "data": hca,
         "units": "NA",
         "long_name": "NCAR Hydrometeor classification",
-        "description:": ("NCAR Hydrometeor classification developed by Vivekanandan et al. (1999) "
+        "description": ("NCAR Hydrometeor classification developed by Vivekanandan et al. (1999) "
         "doi:10.1175/1520-0477(1999)080<0381:CMRUSB>2.0.CO;2"),
         "comments": the_comments,
     }
@@ -66,7 +63,7 @@ def get_odim_ncar_hca(elevation, odim_ffn, array_shape, skip_birdbath=True):
             ds_name = "dataset" + str(i + 1)
             # skip until required elevation angle is found
             test_angle = f[ds_name]["where"].attrs["elangle"].astype(np.float32)
-            if test_angle != elevation:
+            if abs(test_angle - elevation) > 0.1:
                 continue
             # skip if birdbath
             if test_angle == float(90) and skip_birdbath:
@@ -94,7 +91,7 @@ def add_pyodim_metadata(
     metadata_dict: dict
         dictionary containing keys and values to add into sweep_ds
     skip_key: string
-        names of key to skip in metadata_dict
+        name of key to skip in metadata_dict
 
     Returns
     -------
@@ -122,7 +119,7 @@ def add_pyart_metadata(radar, variable_name, metadata_dict, skip_key="data"):
     metadata_dict: dict
         dictionary containing keys and values to add into sweep_ds
     skip_key: string
-        names of key to skip in metadata_dict
+        name of key to skip in metadata_dict
 
     Returns
     -------
@@ -144,11 +141,13 @@ def safe_log(x, eps=1e-10):
     Parameters
     ----------
     x: numpy array
+    eps: float
+        values below this threshold are replaced with the floor value -10
 
     Returns
     -------
     result : numpy array
-"""
+    """
 
     result = np.where(x > eps, x, -10)
     np.log(result, out=result, where=result > 0)

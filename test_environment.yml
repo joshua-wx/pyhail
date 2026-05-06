@@ -9,4 +9,4 @@ dependencies:
  - numba=0.59.1
  - ipython
  - ipykernel
- - pyodim
+ - ipywidgets

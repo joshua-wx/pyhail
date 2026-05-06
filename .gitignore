@@ -1,16 +1,38 @@
-*.pyc
-old
-dist
-__pycache__
+# Python
+*.py[cod]
+**/__pycache__/
+*.so
+*.egg
+*.egg-info/
+.eggs/
+
+# Distribution / build
+build/
+dist/
+
+# Jupyter
+**/.ipynb_checkpoints/
+notebooks/Python2-3_transition.ipynb
+
+# Notebook data outputs
 notebooks/*.dat
 notebooks/*.nc
 notebooks/*.png
-notebooks/Python2-3_transition.ipynb
-notebooks/.ipynb_checkpoints
-build
-references
-release
-pyhail.egg-info
-test
-image_out
-.ipynb_checkpoints
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project-specific directories
+old/
+references/
+release/
+test/
+image_out/

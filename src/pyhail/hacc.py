@@ -84,9 +84,9 @@ def pyart(
     else:
         hsda_field = radar.get_field(sweep_idx, hsda_fname, copy=True)
     hacc_dict = main(
-        radar.get_field(sweep_idx, reflectivity_fname, copy=True).filled(np.nan),
+        np.ma.filled(radar.get_field(sweep_idx, reflectivity_fname, copy=True), np.nan),
         hsda_field,
-        radar.get_field(mesh_idx, mesh_fname, copy=True).filled(np.nan),
+        np.ma.filled(radar.get_field(mesh_idx, mesh_fname, copy=True), np.nan),
         sweep0_z + radar_altitude,
         fz_level,
         pressure,

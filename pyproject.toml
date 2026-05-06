@@ -1,24 +1,36 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyhail"
-version = "3.3.2"
-authors = [
-  { name="Joshua Soderholm", email="joshua.soderholm@bom.gov.au" },
-]
-description = "Python hail retreivals"
+dynamic = ["version"]
+description = "Python hail weather radar retrievals"
 readme = "README.md"
 requires-python = ">=3.9"
+authors = [
+    { name = "Joshua Soderholm", email = "joshua.soderholm@bom.gov.au" },
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
-keywords = ["radar", "weather", "meteorology", "calibration"]
-dependencies=["numpy", "scipy", "numba>=0.59.1"]
+keywords = ["radar", "weather", "meteorology", "hail"]
+dependencies = ["numpy", "scipy", "numba>=0.59.1"]
 
 [project.urls]
-"Homepage" = "https://github.com/joshua-wx/pyhail"
+Homepage = "https://github.com/joshua-wx/pyhail"
 "Bug Tracker" = "https://github.com/joshua-wx/pyhail/issues"
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

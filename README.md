@@ -1,50 +1,151 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/joshua-wx/pyhail)
 
-# Python Hail Retrieval Toolkit (pyhail) ⛈️📡🧊
+# Python Hail Retrieval Toolkit (pyhail)
 
-This toolkit provides a collection of hail retrieval techniques for weather radar data.
+pyhail is a Python library providing hail retrieval algorithms for weather radar data.
+It supports both the [Py-ART](https://github.com/ARM-DOE/pyart) and [pyodim](https://github.com/vlouf/pyodim)
+radar interfaces and operates directly on native polar (PPI) data, with optional Cartesian gridding for MESH.
 
-### Library Dependencies
-- numpy
-- scipy
-- numba
+---
 
-### Supporter radar file readers
-- [PyART](https://github.com/ARM-DOE/pyart)
-- [PyOdim](https://github.com/vlouf/pyodim)
+## Retrievals
 
-### Notebook plotting Dependencies
-- matplotlib
+| Algorithm | Output field | Units | Description |
+|-----------|-------------|-------|-------------|
+| **MESH** | `mesh` | mm | Maximum Expected Size of Hail — column-integrated kinetic energy converted to hail diameter |
+| **HSDA** | `hsda` | class | Hail Size Discrimination Algorithm — polarimetric classification of hail size |
+| **HDR** | `hdr_size` | mm | Hail Differential Reflectivity — hail size estimate from ZH and ZDR |
+| **HACC** | `hacc` | cm/min | Hail Accumulation — surface hail accumulation rate |
 
-### Hail Retrivals
-- *Hail Size Discrimination Algorithm - HSDA ([Ortega et al. 2016](https://journals.ametsoc.org/doi/10.1175/JAMC-D-15-0203.1))
-- Hail Differential Reflectivity - HDR ([Depue et al. 2007](https://doi.org/10.1175/JAM2529.1))
-- Maximum Expected Size of Hail - MESH witt1998 ([Witt et al. 1998](https://journals.ametsoc.org/doi/10.1175/1520-0434%281998%29013%3C0286%3AAEHDAF%3E2.0.CO%3B2))
-- Maximum Expected Size of Hail - MESH mh2019_75/mh2019_95 ([Murillo and Homeyer 2019](https://journals.ametsoc.org/view/journals/apme/58/5/jamc-d-18-0247.1.xml))
-- Accumulated Hail - hAcc ([Wallace et al. 2019](https://journals.ametsoc.org/view/journals/wefo/34/1/waf-d-18-0053_1.xml))
+### MESH formulations
 
-*Note that the Q confidence vector from Park et al. 2009 has not been implemented and all pixels are assigned a value of q=1.
+Four calibrations are available via the `mesh_method` parameter:
 
-MESH is implemented for both pyart radar (PPI) and grid (Cartesian) data!
+| `mesh_method` | Formula | Calibrated to | Reference |
+|--------------|---------|--------------|-----------|
+| `witt1998` | MESH = 2.54 × SHI^0.5 | 147 reports | Witt et al. (1998) |
+| `mh2019_75` | MESH = 15.096 × SHI^0.206 | 5897 reports, 75th pct | Murillo & Homeyer (2021) |
+| `mh2019_95` | MESH = 22.157 × SHI^0.212 | 5897 reports, 95th pct | Murillo & Homeyer (2021) |
+| `blend` *(default)* | Logistic blend of `witt1998` → `mh2019_75` | — | — |
 
-### Install using pypi
+The `blend` formulation transitions smoothly from Witt (1998) at low SHI to Murillo & Homeyer (2021)
+at high SHI using a logistic weight, eliminating the discontinuous derivative of a hard piecewise switch.
+The crossover point is the analytical intercept of the two power laws (SHI ≈ 429 J m⁻¹ s⁻¹,
+MESH ≈ 52.6 mm).
 
-`pip install pyhail`
+### C-band correction
 
-### Install from source
-To install pyhail, you can either download and unpack the zip file of the source code or use git to checkout the repository:
+When processing C-band radar data, MESH can apply a reflectivity correction for Mie scattering
+and attenuation effects using `radar_band='C'` and `correct_cband_refl=True`
+(Brook et al. 2023, [arXiv:2306.12016](https://arxiv.org/abs/2306.12016)).
 
-`git clone git@github.com:joshua-wx/pyhail.git`
+> **Note**: The HSDA Q confidence vector (Park et al. 2009) is not implemented;
+> all pixels are assigned q = 1.
 
-To install in your home directory, use:
+---
 
-`python setup.py install --user`
+## Installation
 
-### Use
-- [Example Notebook](https://github.com/joshua-wx/pyhail/blob/master/notebooks/example.ipynb)
+### From PyPI
 
-### Test files
-The test file for the pyart and pyodim test notebooks is located at notebooks/data
-For the c_band_mesh_correction script, the test files are located on gadi. Please contact if you need access.
+```bash
+pip install pyhail
+```
 
-This project is maintained by Joshua Soderholm (aura at bom.gov.au). Any problems? Please use the Github issue tracker.
+### Conda environment (recommended for notebooks)
+
+A full environment including Py-ART, pyodim, cartopy, and Jupyter is provided:
+
+```bash
+conda env create -f test_environment.yml
+conda activate pyhail-test-env
+```
+
+### From source
+
+```bash
+git clone git@github.com:joshua-wx/pyhail.git
+cd pyhail
+pip install -e .
+```
+
+---
+
+## Dependencies
+
+**Core** (installed automatically via pip):
+- [numpy](https://numpy.org/)
+- [scipy](https://scipy.org/)
+- [numba](https://numba.pydata.org/) ≥ 0.59.1
+
+**Radar I/O** (install separately, choose one or both):
+- [Py-ART](https://github.com/ARM-DOE/pyart) — `pip install arm-pyart`
+- [pyodim](https://github.com/vlouf/pyodim) — `pip install pyodim`
+
+**Notebooks only**: matplotlib, cartopy, ipywidgets
+
+---
+
+## Key parameters
+
+### MESH (`mesh_ppi.pyart` / `mesh_ppi.pyodim`)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `temp_levels` | — | `[freezing_level, minus20_level]` in m ASL |
+| `mesh_method` | `'blend'` | One of `witt1998`, `mh2019_75`, `mh2019_95`, `blend` |
+| `radar_band` | `'S'` | `'S'` or `'C'` |
+| `correct_cband_refl` | `True` | Apply C-band Mie/attenuation correction |
+| `min_range` / `max_range` | `10` / `150` | Range limits (km) |
+| `transition_width` | `200` | Blend logistic width (J m⁻¹ s⁻¹); smaller = sharper transition |
+
+### HSDA (`hsda.pyart` / `hsda.pyodim`)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `levels` | — | `[freezing_level, minus20_level]` in m ASL |
+| `hca_hail_idx` | — | HCA class indices to apply HSDA (e.g. `[6, 7, 8]` for hail classes) |
+| `dzdr` | `0` | ZDR calibration offset (dB) |
+
+### HACC (`hacc.pyart` / `hacc.pyodim`)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `sweep_idx` | — | Sweep index for accumulation calculation |
+| `mesh_idx` | — | Sweep index containing the MESH field |
+| `fz_level` | — | Freezing level height (m) |
+| `pressure` | — | Mean surface-to-freezing-level pressure (hPa) |
+
+---
+
+## Notebooks
+
+Working examples with bundled data are in [`notebooks/`](notebooks/).
+
+| Notebook | Description |
+|----------|-------------|
+| [`testing_pyart.ipynb`](notebooks/testing_pyart.ipynb) | All retrievals using the Py-ART interface |
+| [`testing_pyodim.ipynb`](notebooks/testing_pyodim.ipynb) | All retrievals using the pyodim interface |
+| [`compare_mesh_fits.ipynb`](notebooks/compare_mesh_fits.ipynb) | Comparison of the four MESH calibrations |
+| [`hybrid_mesh_blend.ipynb`](notebooks/hybrid_mesh_blend.ipynb) | Interactive exploration of the smooth blend formulation |
+| [`c_band_mesh_correction.ipynb`](notebooks/c_band_mesh_correction.ipynb) | Effect of C-band correction on MESH (requires external data) |
+
+---
+
+## References
+
+- Witt et al. (1998) doi:[10.1175/1520-0434(1998)013<0286:AEHDAF>2.0.CO;2](https://doi.org/10.1175/1520-0434(1998)013%3C0286:AEHDAF%3E2.0.CO;2)
+- Murillo & Homeyer (2021) doi:[10.1175/JAMC-D-20-0271.1](https://doi.org/10.1175/JAMC-D-20-0271.1)
+- Ortega et al. (2016) doi:[10.1175/JAMC-D-15-0203.1](https://doi.org/10.1175/JAMC-D-15-0203.1)
+- Ryzhkov et al. (2013) doi:[10.1175/JAMC-D-13-074.1](https://doi.org/10.1175/JAMC-D-13-074.1)
+- Depue et al. (2007) doi:[10.1175/JAM2529.1](https://doi.org/10.1175/JAM2529.1)
+- Wallace et al. (2019) doi:[10.1175/WAF-D-18-0053.1](https://doi.org/10.1175/WAF-D-18-0053.1)
+- Kalina et al. (2016) doi:[10.1175/WAF-D-15-0037.1](https://doi.org/10.1175/WAF-D-15-0037.1)
+- Brook et al. (2023) arXiv:[2306.12016](https://arxiv.org/abs/2306.12016)
+
+---
+
+## Issues and contact
+
+Please use the [GitHub issue tracker](https://github.com/joshua-wx/pyhail/issues) to report bugs or request features.
+Maintained by Joshua Soderholm (joshua.soderholm@bom.gov.au).

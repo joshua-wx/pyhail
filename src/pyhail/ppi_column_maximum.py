@@ -1,5 +1,5 @@
 """
-Optimised approach to find the vertical column maximum in spherical coordinates
+Optimized approach to find the vertical column maximum in spherical coordinates
 """
 
 import numpy as np
@@ -28,6 +28,8 @@ def pyodim(
         name of field
     elevation_fname: string
         name of radar elevation field
+    azimuth_fname: string
+        name of radar azimuth field
     range_fname: string
         name of radar bin range field
     min_range: int
@@ -35,11 +37,12 @@ def pyodim(
     max_range: int
         maximum surface range for retrieval (m)
     column_altitude_minimum: float
-        minimum altitude (m above radar radar) to use for column search
+        minimum altitude (m above radar level) to use for column search
     column_altitude_maximum: float
-        maximum altitude (m above radar radar) to use for column search
+        maximum altitude (m above radar level) to use for column search
     column_shift_maximum: float
         maximum horizontal distance a column can shift by
+
     Returns:
     ========
     field: 2D array
@@ -79,6 +82,8 @@ def _antenna_to_arc(ranges, elevation):
     """
     Return the great circle distance directly below the radar beam and the
     altitude of the radar beam.
+
+    Parameters
     ----------
     ranges : 1d array
         Distances to the center of the radar gates (bins) in meters.
@@ -121,8 +126,27 @@ def find_column_max(field_dataset, s_lookup_dataset,
                     min_range_m, max_range_m,
                     azimuth_dataset, s_dataset):
     """
-    Optimized function to find column maximums with better memory access patterns and
-    eliminated redundant calculations.
+    Find the column maximum field value across all sweeps for each surface range bin.
+
+    Parameters
+    ----------
+    field_dataset : list of 2D ndarrays
+        sweep field data, each with dimensions (azimuth, range)
+    s_lookup_dataset : list of 1D ndarrays
+        per range bin, the range index into each sweep (-1 if invalid)
+    min_range_m : float
+        minimum surface range in meters
+    max_range_m : float
+        maximum surface range in meters
+    azimuth_dataset : list of 1D ndarrays
+        sweep azimuth angles
+    s_dataset : list of 1D ndarrays
+        sweep great circle arc distances in meters
+
+    Returns
+    -------
+    column_max_field : 2D ndarray
+        column maximum with dimensions (azimuth, range)
     """
     n_rays = len(azimuth_dataset[0])
     n_bins = len(s_dataset[0])
@@ -137,7 +161,7 @@ def find_column_max(field_dataset, s_lookup_dataset,
     valid_columns = []
     for rg_idx in range(n_bins):
         if (not range_mask[rg_idx]
-            and np.sum(s_lookup_dataset[rg_idx] != -1) > 0):
+            and np.any(s_lookup_dataset[rg_idx] != -1)):
             valid_columns.append(rg_idx)
     
     # Process only valid columns - reduces iterations significantly
@@ -150,12 +174,11 @@ def find_column_max(field_dataset, s_lookup_dataset,
             
             # Vectorized column integration where possible
             for sweep_idx in range(len(lookup_indices)):
-                if sweep_idx < len(field_dataset):
-                    rng_idx = lookup_indices[sweep_idx]
-                    if rng_idx == -1:
-                        continue
-                    if rng_idx < field_dataset[sweep_idx].shape[1]:
-                        column_field[sweep_idx] = field_dataset[sweep_idx][az_idx, rng_idx]
+                rng_idx = lookup_indices[sweep_idx]
+                if rng_idx == -1:
+                    continue
+                if rng_idx < field_dataset[sweep_idx].shape[1]:
+                    column_field[sweep_idx] = field_dataset[sweep_idx][az_idx, rng_idx]
             
             column_max_field[az_idx, rg_idx] = np.nanmax(column_field)
     
@@ -173,6 +196,7 @@ def main(
     column_shift_maximum=2500
 ):
     """
+    Find the column maximum of a field across all sweeps, projected onto the lowest sweep's range grid.
 
     Parameters
     ----------
@@ -189,9 +213,9 @@ def main(
     max_range: int
         maximum surface range for retrieval (m)
     column_altitude_minimum: float
-        minimum altitude (m above radar radar) to use for column search
+        minimum altitude (m above radar level) to use for column search
     column_altitude_maximum: float
-        maximum altitude (m above radar radar) to use for column search
+        maximum altitude (m above radar level) to use for column search
     column_shift_maximum: float
         maximum shift from column center to use a pixel
     Returns
@@ -231,10 +255,10 @@ def main(
         for sweep_idx in range(0, n_ppi, 1):
             dist_array = np.abs(s_dataset[0][rg_idx] - s_dataset[sweep_idx])
             closest_rng_idx = np.argmin(dist_array)
-            #topped out above column min, set to invalid (-1)
+            # topped out above column min, set to invalid (-1)
             if z_dataset[sweep_idx][closest_rng_idx] < column_altitude_minimum:
                 closest_rng_idx = -1
-            #topped out above column max, set to invalid (-1)
+            # topped out above column max, set to invalid (-1)
             elif z_dataset[sweep_idx][closest_rng_idx] > column_altitude_maximum:
                 closest_rng_idx = -1
             # sweeps where the horizontal shift is greater than column_shift_maximum (removes birdbaths and when base scan max range is greater than all other scans), set to invalid (-1)

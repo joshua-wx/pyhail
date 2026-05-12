@@ -197,7 +197,8 @@ def main(
     shi_fname=None,
     speckle_filter=True,
     correct_cband_refl=True,
-    transition_width=200
+    transition_width=200,
+    near_radar_mask_range=10000,
 ):
     """
     Adapted from Witt et al. 1998 and Murillo and Homeyer 2019
@@ -226,6 +227,11 @@ def main(
         SHI range (J m⁻¹ s⁻¹) over which the logistic weight moves from
         0.1 to 0.9.  Smaller values approach a hard piecewise switch;
         larger values produce a broader, gentler handoff.  Default 200.
+    near_radar_mask_range : float or None
+        Range from the radar (m) within which all output fields are set to
+        NaN.  Data close to the radar are typically contaminated by ground
+        clutter and should not be used.  Default 10000 (10 km).  Pass None
+        to disable the mask.
 
     Returns
     -------
@@ -339,6 +345,14 @@ def main(
     # apply speckle filter
     if speckle_filter:
         shi = filter_small_objects(shi)
+
+    # mask all fields within near_radar_mask_range of the radar
+    if near_radar_mask_range is not None:
+        x_2d, y_2d = np.meshgrid(grid.x["data"], grid.y["data"])
+        near_mask = np.hypot(x_2d, y_2d) < near_radar_mask_range
+        shi[near_mask] = np.nan
+        mesh[near_mask] = np.nan
+        posh[near_mask] = np.nan
 
     output_fields = {}
 

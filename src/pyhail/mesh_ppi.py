@@ -282,7 +282,7 @@ def pyodim(
 
     return datasets
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def _antenna_to_arc(ranges, elevation):
     """
     Return the great circle distance directly below the radar beam and the
@@ -324,7 +324,7 @@ def _antenna_to_arc(ranges, elevation):
     s = R * np.arcsin(ranges * np.cos(theta_e) / (R + z))
     return s, z
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def _calc_dz(column_z):
     """
     Calculate altitude difference between elements in a 1d array
@@ -353,7 +353,7 @@ def _calc_dz(column_z):
     
     return dz
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def _hail_ke_calculation(reflectivity, z_l, z_u):
     """
     Numba-optimized hail kinetic energy calculation.
@@ -371,7 +371,7 @@ def _hail_ke_calculation(reflectivity, z_l, z_u):
     
     return hail_ke
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def optimized_shi_integration(hail_ke_datasets, wt_datasets, dz_datasets,
                               s_lookup_dataset, sweep_lookup_dataset,
                               azimuth_dataset, s_dataset,
@@ -414,7 +414,8 @@ def optimized_shi_integration(hail_ke_datasets, wt_datasets, dz_datasets,
             for lookup_idx in range(len(lookup_indices)):
                 sweep_idx = sweep_indices[lookup_idx]
                 rng_idx = lookup_indices[lookup_idx]
-                if rng_idx < hail_ke_datasets[sweep_idx].shape[1]:
+                if (rng_idx < hail_ke_datasets[sweep_idx].shape[1]
+                        and az_idx < hail_ke_datasets[sweep_idx].shape[0]):
                     hke_val = hail_ke_datasets[sweep_idx][az_idx, rng_idx]
                     wt_val = wt_datasets[sweep_idx][rng_idx]
                     dz_val = dz_values[lookup_idx]
@@ -502,7 +503,7 @@ def main(
     neg20layer = np.max(levels)
 
     # sort by fixed angle
-    sort_idx = list(np.argsort(elevation))
+    sort_idx = list(np.argsort(elevation, kind='stable'))
     reflectivity_dataset = [reflectivity[i] for i in sort_idx]
     elevation_dataset = [elevation[i] for i in sort_idx]
     azimuth_dataset = [azimuth[i] for i in sort_idx]
@@ -530,6 +531,12 @@ def main(
     # Initialize sweep coords
     sweep0_nrays = len(azimuth_dataset[0])
     sweep0_nbins = len(range_dataset[0])
+    for i, az in enumerate(azimuth_dataset):
+        if len(az) != sweep0_nrays:
+            warnings.warn(
+                f"Sweep {sort_idx[i]} (elevation {elevation_dataset[i]:.1f}°) has {len(az)} rays "
+                f"but sweep 0 has {sweep0_nrays}. Missing azimuths will be skipped in SHI integration."
+            )
     n_ppi = len(elevation_dataset)
     z_dataset = (
         []

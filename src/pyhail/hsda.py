@@ -362,7 +362,7 @@ def main(
     return hsda_meta
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def h_sz(zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w):
     """
     calculates the hail size class for a radar voxel
@@ -419,7 +419,7 @@ def h_sz(zh, zdr, rhv, mf_h1, mf_h2, mf_h3, q, w):
     return out
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def calc_ag(mf, zh, zdr, rhv, q, w):
     """
     calculates the polarimetric aggregates for a hail size class
@@ -477,7 +477,7 @@ def calc_ag(mf, zh, zdr, rhv, q, w):
     return out
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def trapmf(x, a, b, c, d):
     """
     Trapezoidal membership function generator.

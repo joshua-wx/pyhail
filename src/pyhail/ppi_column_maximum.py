@@ -2,6 +2,7 @@
 Optimized approach to find the vertical column maximum in spherical coordinates
 """
 
+import warnings
 import numpy as np
 from numba import jit
 
@@ -77,7 +78,7 @@ def pyodim(
 
     return output_field
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def _antenna_to_arc(ranges, elevation):
     """
     Return the great circle distance directly below the radar beam and the
@@ -121,7 +122,7 @@ def _antenna_to_arc(ranges, elevation):
     return s, z
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True, fastmath=False)
 def find_column_max(field_dataset, s_lookup_dataset,
                     min_range_m, max_range_m,
                     azimuth_dataset, s_dataset):
@@ -177,7 +178,8 @@ def find_column_max(field_dataset, s_lookup_dataset,
                 rng_idx = lookup_indices[sweep_idx]
                 if rng_idx == -1:
                     continue
-                if rng_idx < field_dataset[sweep_idx].shape[1]:
+                if (rng_idx < field_dataset[sweep_idx].shape[1]
+                        and az_idx < field_dataset[sweep_idx].shape[0]):
                     column_field[sweep_idx] = field_dataset[sweep_idx][az_idx, rng_idx]
             
             column_max_field[az_idx, rg_idx] = np.nanmax(column_field)
@@ -226,15 +228,22 @@ def main(
     """
 
     # sort by fixed angle
-    sort_idx = list(np.argsort(elevation))
+    sort_idx = list(np.argsort(elevation, kind='stable'))
     field_dataset = [field[i] for i in sort_idx]
     elevation_dataset = [elevation[i] for i in sort_idx]
     azimuth_dataset = [azimuth[i] for i in sort_idx]
     range_dataset = [rangebin[i] for i in sort_idx]
 
     # Initialize sweep coords
+    sweep0_nrays = len(azimuth_dataset[0])
     sweep0_nbins = len(range_dataset[0])
     n_ppi = len(elevation_dataset)
+    for i, az in enumerate(azimuth_dataset):
+        if len(az) != sweep0_nrays:
+            warnings.warn(
+                f"Sweep {sort_idx[i]} (elevation {elevation_dataset[i]:.1f}°) has {len(az)} rays "
+                f"but sweep 0 has {sweep0_nrays}. Missing azimuths will be skipped in column max."
+            )
     z_dataset = (
         []
     )  # list (dim: elevation) of 1d array (dim: range) for each sweep, altitude above ground level (m) of each range bin
